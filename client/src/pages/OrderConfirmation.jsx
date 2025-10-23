@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import http from "../api/http";
+import { downloadReceipt } from "../utils/receiptGenerator";
+import ReceiptPreview from "../components/ReceiptPreview";
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -23,6 +26,20 @@ export default function OrderConfirmation() {
       fetchOrder();
     }
   }, [orderId]);
+
+  const handleDownloadReceipt = async () => {
+    if (!order) return;
+
+    setDownloading(true);
+    try {
+      await downloadReceipt(order);
+    } catch (error) {
+      console.error("Failed to download receipt:", error);
+      alert("Failed to download receipt. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -111,6 +128,9 @@ export default function OrderConfirmation() {
 
       <div className="row">
         <div className="col-lg-8">
+          {/* Receipt Preview */}
+          <ReceiptPreview order={order} showQRCode={true} />
+
           {/* Order Details */}
           <div className="card border-0 shadow-sm mb-4">
             <div className="card-header bg-light">
@@ -280,6 +300,26 @@ export default function OrderConfirmation() {
               )}
 
               <div className="d-grid gap-2">
+                <button
+                  className="btn btn-success"
+                  onClick={handleDownloadReceipt}
+                  disabled={downloading}
+                >
+                  {downloading ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                      ></span>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-download me-2"></i>
+                      Download Receipt
+                    </>
+                  )}
+                </button>
                 <Link to="/products" className="btn btn-primary">
                   <i className="fas fa-shopping-bag me-2"></i>
                   Continue Shopping
@@ -303,5 +343,3 @@ export default function OrderConfirmation() {
     </div>
   );
 }
-
-

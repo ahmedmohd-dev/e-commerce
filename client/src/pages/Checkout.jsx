@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import { useAuth } from "../contexts/AuthContext";
 import http from "../api/http";
+import { generatePaymentQRCode } from "../utils/receiptGenerator";
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("telebirr");
   const [telebirrTransactionId, setTelebirrTransactionId] = useState("");
+  const [qrCodeDataURL, setQrCodeDataURL] = useState(null);
+  const [qrCodeLoading, setQrCodeLoading] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -34,6 +37,32 @@ export default function Checkout() {
       [name]: value,
     }));
   };
+
+  // Generate QR code for Telebirr payment
+  useEffect(() => {
+    const generateQRCode = async () => {
+      if (paymentMethod === "telebirr" && items.length > 0) {
+        setQrCodeLoading(true);
+        try {
+          const paymentData = {
+            amount: getTotalPrice() * 1.1,
+            phone: "+251 9XX XXX XXX",
+            description: `Payment for ${items.length} item(s)`,
+          };
+          const qrCode = await generatePaymentQRCode(paymentData);
+          setQrCodeDataURL(qrCode);
+        } catch (error) {
+          console.error("QR Code generation failed:", error);
+        } finally {
+          setQrCodeLoading(false);
+        }
+      } else {
+        setQrCodeDataURL(null);
+      }
+    };
+
+    generateQRCode();
+  }, [paymentMethod, items, getTotalPrice]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -316,16 +345,63 @@ export default function Checkout() {
                       <i className="fas fa-info-circle me-2"></i>Telebirr
                       Payment Instructions:
                     </h6>
-                    <ol className="mb-2">
-                      <li>
-                        Send payment to: <strong>+251 9XX XXX XXX</strong>
-                      </li>
-                      <li>
-                        Amount:{" "}
-                        <strong>${(getTotalPrice() * 1.1).toFixed(2)}</strong>
-                      </li>
-                      <li>Enter the transaction ID below after payment</li>
-                    </ol>
+
+                    {/* QR Code Section */}
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <div className="text-center">
+                          <h6 className="mb-2">Scan QR Code to Pay</h6>
+                          {qrCodeLoading ? (
+                            <div
+                              className="d-flex justify-content-center align-items-center"
+                              style={{ height: "200px" }}
+                            >
+                              <div
+                                className="spinner-border text-primary"
+                                role="status"
+                              >
+                                <span className="visually-hidden">
+                                  Generating QR Code...
+                                </span>
+                              </div>
+                            </div>
+                          ) : qrCodeDataURL ? (
+                            <div className="border rounded p-2 bg-white">
+                              <img
+                                src={qrCodeDataURL}
+                                alt="Payment QR Code"
+                                className="img-fluid"
+                                style={{ maxWidth: "150px" }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="text-muted">
+                              QR Code not available
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="col-md-6">
+                        <div className="payment-instructions">
+                          <h6 className="mb-2">Manual Payment</h6>
+                          <ol className="mb-2">
+                            <li>
+                              Send payment to: <strong>+251 9XX XXX XXX</strong>
+                            </li>
+                            <li>
+                              Amount:{" "}
+                              <strong>
+                                ${(getTotalPrice() * 1.1).toFixed(2)}
+                              </strong>
+                            </li>
+                            <li>
+                              Enter the transaction ID below after payment
+                            </li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="mb-3">
                       <label className="form-label">Transaction ID *</label>
                       <input
@@ -441,5 +517,3 @@ export default function Checkout() {
     </div>
   );
 }
-
-
