@@ -51,6 +51,12 @@ export default function Navbar() {
                 Products
               </Link>
             </li>
+            <li className="nav-item">
+              <Link className="nav-link" to="/qr-scanner">
+                <i className="fas fa-qrcode me-1"></i>
+                QR Scanner
+              </Link>
+            </li>
             {role === "admin" && (
               <li className="nav-item">
                 <Link className="nav-link" to="/admin">

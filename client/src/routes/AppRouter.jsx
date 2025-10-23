@@ -9,6 +9,7 @@ import Favorites from "../pages/Favorites";
 import OrderConfirmation from "../pages/OrderConfirmation";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
+import QRScanner from "../pages/QRScanner";
 import Navbar from "../components/Navbar.jsx";
 import { auth } from "../auth/firebase";
 import { useEffect, useState } from "react";
@@ -62,6 +63,7 @@ export default function AppRouter() {
               />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/qr-scanner" element={<QRScanner />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>

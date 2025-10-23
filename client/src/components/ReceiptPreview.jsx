@@ -1,22 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { generatePaymentQRCode } from "../utils/receiptGenerator";
+import { generateReceiptDownloadQRCode } from "../utils/receiptGenerator";
 
 export default function ReceiptPreview({ order, showQRCode = true }) {
   const [qrCodeDataURL, setQrCodeDataURL] = useState(null);
   const [qrCodeLoading, setQrCodeLoading] = useState(false);
+  const [requireAuth, setRequireAuth] = useState(false);
 
   useEffect(() => {
     const generateQRCode = async () => {
       if (showQRCode && order) {
         setQrCodeLoading(true);
         try {
-          const paymentData = {
-            orderId: order._id,
-            total: order.total,
-            paymentMethod: order.paymentMethod,
-            timestamp: order.createdAt,
-          };
-          const qrCode = await generatePaymentQRCode(paymentData);
+          const qrCode = await generateReceiptDownloadQRCode(order, requireAuth);
           setQrCodeDataURL(qrCode);
         } catch (error) {
           console.error("QR Code generation failed:", error);
@@ -27,7 +22,7 @@ export default function ReceiptPreview({ order, showQRCode = true }) {
     };
 
     generateQRCode();
-  }, [order, showQRCode]);
+  }, [order, showQRCode, requireAuth]);
 
   if (!order) return null;
 
@@ -90,7 +85,43 @@ export default function ReceiptPreview({ order, showQRCode = true }) {
           {showQRCode && (
             <div className="col-md-4">
               <div className="text-center">
-                <h6 className="mb-2">Order QR Code</h6>
+                <h6 className="mb-2">Download Receipt QR Code</h6>
+                
+                {/* Authentication Toggle */}
+                <div className="mb-3">
+                  <div className="form-check form-check-inline">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="authOption"
+                      id="publicQR"
+                      checked={!requireAuth}
+                      onChange={() => setRequireAuth(false)}
+                    />
+                    <label className="form-check-label" htmlFor="publicQR">
+                      Public QR
+                    </label>
+                  </div>
+                  <div className="form-check form-check-inline">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="authOption"
+                      id="protectedQR"
+                      checked={requireAuth}
+                      onChange={() => setRequireAuth(true)}
+                    />
+                    <label className="form-check-label" htmlFor="protectedQR">
+                      Protected QR
+                    </label>
+                  </div>
+                </div>
+
+                <small className="text-muted mb-2 d-block">
+                  {requireAuth 
+                    ? "🔒 Requires login to download" 
+                    : "🌐 Anyone can download"}
+                </small>
                 {qrCodeLoading ? (
                   <div
                     className="d-flex justify-content-center align-items-center"
@@ -115,7 +146,7 @@ export default function ReceiptPreview({ order, showQRCode = true }) {
                   <div className="text-muted">QR Code not available</div>
                 )}
                 <small className="text-muted mt-2 d-block">
-                  Scan to view order details
+                  Scan to download receipt PDF
                 </small>
               </div>
             </div>

@@ -200,3 +200,38 @@ export const generatePaymentQRCode = async (paymentData) => {
     throw error;
   }
 };
+
+export const generateReceiptDownloadQRCode = async (order, requireAuth = false) => {
+  try {
+    // Create a download URL based on authentication requirement
+    const downloadUrl = requireAuth 
+      ? `${window.location.origin}/api/receipt/download-protected/${order._id}`
+      : `${window.location.origin}/api/receipt/download/${order._id}`;
+    
+    const qrData = {
+      type: "receipt_download",
+      orderId: order._id,
+      downloadUrl: downloadUrl,
+      total: order.total,
+      timestamp: new Date().toISOString(),
+      message: requireAuth 
+        ? "Scan to download receipt PDF (Login Required)" 
+        : "Scan to download receipt PDF",
+      requireAuth: requireAuth,
+    };
+
+    const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
+      width: 200,
+      margin: 2,
+      color: {
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
+    });
+
+    return qrCodeDataURL;
+  } catch (error) {
+    console.error("Receipt Download QR Code generation failed:", error);
+    throw error;
+  }
+};
