@@ -128,8 +128,37 @@ const generateReceiptPDF = async (order) => {
   doc.setFont("helvetica", "bold");
   doc.text(`Total: $${order.total.toFixed(2)}`, 120, totalsY + 35);
 
-  // Footer
-  const footerY = pageHeight - 30;
+  // Generate QR Code for download
+  try {
+    const downloadUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/api/receipt/download/${order._id}`;
+    const qrCodeDataURL = await QRCode.toDataURL(downloadUrl, {
+      width: 60,
+      margin: 1,
+    });
+
+    // Add QR Code to PDF (positioned to avoid text overlap)
+    const qrCodeX = pageWidth - 80; // Right side
+    const qrCodeY = totalsY + 50; // Below totals with proper spacing
+    
+    // Add QR Code label
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(secondaryColor);
+    doc.text("Scan to download receipt", qrCodeX, qrCodeY - 5);
+    
+    // Add QR Code image
+    doc.addImage(qrCodeDataURL, 'PNG', qrCodeX, qrCodeY, 60, 60);
+    
+    // Add QR Code instruction
+    doc.text("Mobile: Scan QR code", qrCodeX, qrCodeY + 65);
+    doc.text("Desktop: Use download button", qrCodeX, qrCodeY + 72);
+    
+  } catch (error) {
+    console.error("QR Code generation failed:", error);
+  }
+
+  // Footer - positioned to avoid QR code overlap
+  const footerY = Math.max(pageHeight - 40, totalsY + 100); // Ensure proper spacing
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(secondaryColor);

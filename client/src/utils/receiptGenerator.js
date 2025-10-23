@@ -205,7 +205,7 @@ export const generateReceiptDownloadQRCode = async (order) => {
   try {
     // Create a direct download URL that will trigger PDF download
     const downloadUrl = `${window.location.origin}/api/receipt/download/${order._id}`;
-    
+
     // Use the direct download URL as QR code content
     // This will make phones auto-download when scanned
     const qrCodeDataURL = await QRCode.toDataURL(downloadUrl, {
