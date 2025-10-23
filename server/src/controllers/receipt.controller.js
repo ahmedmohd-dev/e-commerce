@@ -172,47 +172,8 @@ const downloadReceipt = async (req, res) => {
   }
 };
 
-// Download receipt PDF (Protected - requires authentication)
-const downloadReceiptProtected = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const userId = req.user._id; // From auth middleware
-
-    // Find the order and verify ownership
-    const Order = require("../models/Order");
-    const order = await Order.findOne({ 
-      _id: orderId, 
-      user: userId 
-    }).populate("items.product");
-
-    if (!order) {
-      return res.status(404).json({ 
-        message: "Order not found or you don't have permission to access it" 
-      });
-    }
-
-    // Generate PDF
-    const doc = await generateReceiptPDF(order);
-
-    // Set response headers for PDF download
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="receipt-${order._id.slice(-8)}.pdf"`
-    );
-
-    // Send PDF
-    const pdfBuffer = doc.output("arraybuffer");
-    res.send(Buffer.from(pdfBuffer));
-  } catch (error) {
-    console.error("Protected receipt download error:", error);
-    res.status(500).json({ message: "Failed to generate receipt" });
-  }
-};
-
 module.exports = {
   downloadReceipt,
-  downloadReceiptProtected,
 };
 
 

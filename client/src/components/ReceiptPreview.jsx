@@ -4,14 +4,13 @@ import { generateReceiptDownloadQRCode } from "../utils/receiptGenerator";
 export default function ReceiptPreview({ order, showQRCode = true }) {
   const [qrCodeDataURL, setQrCodeDataURL] = useState(null);
   const [qrCodeLoading, setQrCodeLoading] = useState(false);
-  const [requireAuth, setRequireAuth] = useState(false);
 
   useEffect(() => {
     const generateQRCode = async () => {
       if (showQRCode && order) {
         setQrCodeLoading(true);
         try {
-          const qrCode = await generateReceiptDownloadQRCode(order, requireAuth);
+          const qrCode = await generateReceiptDownloadQRCode(order);
           setQrCodeDataURL(qrCode);
         } catch (error) {
           console.error("QR Code generation failed:", error);
@@ -22,7 +21,7 @@ export default function ReceiptPreview({ order, showQRCode = true }) {
     };
 
     generateQRCode();
-  }, [order, showQRCode, requireAuth]);
+  }, [order, showQRCode]);
 
   if (!order) return null;
 
@@ -87,40 +86,8 @@ export default function ReceiptPreview({ order, showQRCode = true }) {
               <div className="text-center">
                 <h6 className="mb-2">Download Receipt QR Code</h6>
                 
-                {/* Authentication Toggle */}
-                <div className="mb-3">
-                  <div className="form-check form-check-inline">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="authOption"
-                      id="publicQR"
-                      checked={!requireAuth}
-                      onChange={() => setRequireAuth(false)}
-                    />
-                    <label className="form-check-label" htmlFor="publicQR">
-                      Public QR
-                    </label>
-                  </div>
-                  <div className="form-check form-check-inline">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="authOption"
-                      id="protectedQR"
-                      checked={requireAuth}
-                      onChange={() => setRequireAuth(true)}
-                    />
-                    <label className="form-check-label" htmlFor="protectedQR">
-                      Protected QR
-                    </label>
-                  </div>
-                </div>
-
                 <small className="text-muted mb-2 d-block">
-                  {requireAuth 
-                    ? "🔒 Requires login to download" 
-                    : "🌐 Anyone can download"}
+                  🌐 Anyone can scan and download
                 </small>
                 {qrCodeLoading ? (
                   <div

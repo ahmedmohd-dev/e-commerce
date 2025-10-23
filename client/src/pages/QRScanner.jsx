@@ -21,17 +21,6 @@ export default function QRScanner() {
 
   const handleDownload = () => {
     if (downloadUrl) {
-      // If it requires auth, check if user is logged in
-      if (scannedData?.requireAuth) {
-        // Check if user is authenticated (you can implement this check)
-        const isAuthenticated = localStorage.getItem('firebaseToken'); // Simple check
-        
-        if (!isAuthenticated) {
-          alert("This QR code requires login. Please log in first.");
-          return;
-        }
-      }
-      
       window.open(downloadUrl, "_blank");
     }
   };
@@ -75,7 +64,7 @@ export default function QRScanner() {
               </div>
 
                {scannedData && (
-                 <div className={`alert ${scannedData.requireAuth ? 'alert-warning' : 'alert-success'}`}>
+                 <div className="alert alert-success">
                    <h6>QR Code Scanned Successfully!</h6>
                    <p>
                      <strong>Order ID:</strong> {scannedData.orderId}
@@ -86,21 +75,13 @@ export default function QRScanner() {
                    <p>
                      <strong>Message:</strong> {scannedData.message}
                    </p>
-                   <p>
-                     <strong>Security:</strong> 
-                     {scannedData.requireAuth ? (
-                       <span className="text-warning"> 🔒 Requires Login</span>
-                     ) : (
-                       <span className="text-success"> 🌐 Public Access</span>
-                     )}
-                   </p>
 
                    <button
-                     className={`btn btn-lg ${scannedData.requireAuth ? 'btn-warning' : 'btn-primary'}`}
+                     className="btn btn-primary btn-lg"
                      onClick={handleDownload}
                    >
                      <i className="fas fa-download me-2"></i>
-                     {scannedData.requireAuth ? 'Download (Login Required)' : 'Download Receipt PDF'}
+                     Download Receipt PDF
                    </button>
                  </div>
                )}

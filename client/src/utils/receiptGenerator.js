@@ -201,12 +201,10 @@ export const generatePaymentQRCode = async (paymentData) => {
   }
 };
 
-export const generateReceiptDownloadQRCode = async (order, requireAuth = false) => {
+export const generateReceiptDownloadQRCode = async (order) => {
   try {
-    // Create a download URL based on authentication requirement
-    const downloadUrl = requireAuth 
-      ? `${window.location.origin}/api/receipt/download-protected/${order._id}`
-      : `${window.location.origin}/api/receipt/download/${order._id}`;
+    // Create a download URL for public access
+    const downloadUrl = `${window.location.origin}/api/receipt/download/${order._id}`;
     
     const qrData = {
       type: "receipt_download",
@@ -214,10 +212,7 @@ export const generateReceiptDownloadQRCode = async (order, requireAuth = false) 
       downloadUrl: downloadUrl,
       total: order.total,
       timestamp: new Date().toISOString(),
-      message: requireAuth 
-        ? "Scan to download receipt PDF (Login Required)" 
-        : "Scan to download receipt PDF",
-      requireAuth: requireAuth,
+      message: "Scan to download receipt PDF",
     };
 
     const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
