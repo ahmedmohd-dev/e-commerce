@@ -82,12 +82,15 @@ export default function ReceiptPreview({ order, showQRCode = true }) {
           </div>
 
           {showQRCode && (
-            <div className="col-md-4">
+            <div className="col-md-4 d-none d-md-block">
               <div className="text-center">
                 <h6 className="mb-2">Download Receipt QR Code</h6>
                 
                 <small className="text-muted mb-2 d-block">
                   🌐 Anyone can scan and download
+                </small>
+                <small className="text-muted mb-2 d-block">
+                  📱 Desktop/Tablet only - Mobile users can use direct download
                 </small>
                 {qrCodeLoading ? (
                   <div

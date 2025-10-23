@@ -203,19 +203,12 @@ export const generatePaymentQRCode = async (paymentData) => {
 
 export const generateReceiptDownloadQRCode = async (order) => {
   try {
-    // Create a download URL for public access
+    // Create a direct download URL that will trigger PDF download
     const downloadUrl = `${window.location.origin}/api/receipt/download/${order._id}`;
     
-    const qrData = {
-      type: "receipt_download",
-      orderId: order._id,
-      downloadUrl: downloadUrl,
-      total: order.total,
-      timestamp: new Date().toISOString(),
-      message: "Scan to download receipt PDF",
-    };
-
-    const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
+    // Use the direct download URL as QR code content
+    // This will make phones auto-download when scanned
+    const qrCodeDataURL = await QRCode.toDataURL(downloadUrl, {
       width: 200,
       margin: 2,
       color: {

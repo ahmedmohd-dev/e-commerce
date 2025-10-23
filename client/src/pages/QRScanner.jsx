@@ -6,6 +6,22 @@ export default function QRScanner() {
 
   const handleQRScan = (data) => {
     try {
+      // Check if it's a direct download URL
+      if (data.includes('/api/receipt/download/')) {
+        setDownloadUrl(data);
+        setScannedData({
+          type: "receipt_download",
+          downloadUrl: data,
+          message: "Receipt download URL detected"
+        });
+        // Auto-download when direct URL is detected
+        setTimeout(() => {
+          window.open(data, "_blank");
+        }, 500);
+        return;
+      }
+      
+      // Try to parse as JSON (for backward compatibility)
       const qrData = JSON.parse(data);
 
       if (qrData.type === "receipt_download" && qrData.downloadUrl) {
@@ -15,7 +31,21 @@ export default function QRScanner() {
         alert("This QR code is not a receipt download code");
       }
     } catch (error) {
-      alert("Invalid QR code format");
+      // If it's not JSON, check if it's a direct URL
+      if (data.includes('/api/receipt/download/')) {
+        setDownloadUrl(data);
+        setScannedData({
+          type: "receipt_download",
+          downloadUrl: data,
+          message: "Receipt download URL detected"
+        });
+        // Auto-download when direct URL is detected
+        setTimeout(() => {
+          window.open(data, "_blank");
+        }, 500);
+      } else {
+        alert("Invalid QR code format");
+      }
     }
   };
 
@@ -42,8 +72,12 @@ export default function QRScanner() {
                 <ol className="text-start">
                   <li>Open this page on your mobile device</li>
                   <li>Scan the QR code from the order confirmation page</li>
-                  <li>Click the download button to get the receipt PDF</li>
+                  <li>PDF will download automatically!</li>
                 </ol>
+                <div className="alert alert-info">
+                  <strong>Note:</strong> QR codes are only visible on desktop/tablet. 
+                  Mobile users can use the direct download button on the order confirmation page.
+                </div>
               </div>
 
               <div className="mb-4">
@@ -53,8 +87,8 @@ export default function QRScanner() {
                 </p>
                 <textarea
                   className="form-control mb-3"
-                  rows="4"
-                  placeholder='{"type":"receipt_download","orderId":"123","downloadUrl":"http://localhost:5000/api/receipt/download/123","total":150,"timestamp":"2024-01-01T00:00:00.000Z","message":"Scan to download receipt PDF"}'
+                  rows="2"
+                  placeholder="http://localhost:5000/api/receipt/download/123"
                   onChange={(e) => {
                     if (e.target.value) {
                       handleQRScan(e.target.value);
