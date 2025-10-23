@@ -8,7 +8,7 @@ const orderItemSchema = new mongoose.Schema({
   },
   name: String,
   price: Number,
-  qty: Number,
+  quantity: Number,
   image: String,
 });
 
@@ -17,31 +17,32 @@ const orderSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     items: [orderItemSchema],
     shippingAddress: {
-      fullName: String,
+      firstName: String,
+      lastName: String,
+      email: String,
+      phone: String,
       address: String,
       city: String,
-      postalCode: String,
+      state: String,
+      zipCode: String,
       country: String,
-      phone: String,
     },
     paymentMethod: {
       type: String,
-      enum: ["paypal", "telebirr-manual"],
+      enum: ["paypal", "telebirr"],
       required: true,
     },
-    paymentResult: {
-      id: String,
+    paymentDetails: {
+      transactionId: String,
       status: String,
-      update_time: String,
-      email_address: String,
-      transactionNumber: String,
       verifiedByAdmin: { type: Boolean, default: false },
       verifiedAt: Date,
     },
-    itemsPrice: Number,
-    taxPrice: Number,
-    shippingPrice: Number,
-    totalPrice: Number,
+    subtotal: Number,
+    tax: Number,
+    shipping: Number,
+    total: Number,
+    notes: String,
     status: {
       type: String,
       enum: ["pending", "paid", "shipped", "completed", "cancelled"],
@@ -52,8 +53,3 @@ const orderSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("Order", orderSchema);
-
-
-
-
-
