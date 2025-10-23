@@ -10,6 +10,7 @@ const orderRoutes = require("./routes/order.routes");
 const paymentRoutes = require("./routes/payment.routes");
 const adminRoutes = require("./routes/admin.routes");
 const adminUtilRoutes = require("./routes/admin.util.routes");
+const receiptRoutes = require("./routes/receipt.routes");
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/_util", adminUtilRoutes);
+app.use("/api/receipt", receiptRoutes);
 // end routes
 
 app.get("/api/health", (req, res) => {
