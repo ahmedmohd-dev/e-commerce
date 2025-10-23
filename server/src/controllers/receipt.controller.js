@@ -249,6 +249,10 @@ const downloadReceipt = async (req, res) => {
       "Content-Disposition",
       `attachment; filename="receipt-${order._id.slice(-8)}.pdf"`
     );
+    // Prevent caching
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
 
     // Send PDF
     const pdfBuffer = doc.output("arraybuffer");
