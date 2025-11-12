@@ -10,6 +10,28 @@ const orderItemSchema = new mongoose.Schema({
   price: Number,
   quantity: Number,
   image: String,
+  shippingStatus: {
+    type: String,
+    enum: ["pending", "shipped", "delivered"],
+    default: "pending",
+  },
+  shippedAt: Date,
+  seller: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+  commissionRate: {
+    type: Number,
+    default: 0,
+  },
+  commissionAmount: {
+    type: Number,
+    default: 0,
+  },
+  sellerEarnings: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const orderSchema = new mongoose.Schema(
@@ -37,6 +59,8 @@ const orderSchema = new mongoose.Schema(
       status: String,
       verifiedByAdmin: { type: Boolean, default: false },
       verifiedAt: Date,
+      verifiedBySeller: { type: Boolean, default: false },
+      sellerVerifiedAt: Date,
     },
     subtotal: Number,
     tax: Number,

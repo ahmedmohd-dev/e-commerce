@@ -9,6 +9,8 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState("buyer");
+  const [sellerStatus, setSellerStatus] = useState("none");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -18,12 +20,18 @@ export function AuthProvider({ children }) {
         try {
           const userProfile = await fetchProfile();
           setProfile(userProfile);
+          setRole(userProfile?.role || "buyer");
+          setSellerStatus(userProfile?.sellerStatus || "none");
         } catch (error) {
           console.error("Error fetching user profile:", error);
           setProfile(null);
+          setRole("buyer");
+          setSellerStatus("none");
         }
       } else {
         setProfile(null);
+        setRole("buyer");
+        setSellerStatus("none");
       }
 
       setLoading(false);
@@ -36,6 +44,8 @@ export function AuthProvider({ children }) {
     user,
     profile,
     loading,
+    role,
+    sellerStatus,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -48,5 +58,3 @@ export function useAuth() {
   }
   return context;
 }
-
-

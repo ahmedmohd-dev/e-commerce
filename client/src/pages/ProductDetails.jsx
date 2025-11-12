@@ -3,6 +3,7 @@ import http from "../api/http";
 import { useParams } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoritesContext";
+import ProductReviews from "../components/ProductReviews";
 
 export default function ProductDetails() {
   const { slug } = useParams();
@@ -12,6 +13,26 @@ export default function ProductDetails() {
   const [addedToCart, setAddedToCart] = useState(false);
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
+
+  const refreshProduct = () => {
+    http.get("/api/products/" + slug).then((r) => {
+      setP(r.data);
+    });
+  };
+
+  const renderStars = (rating) => {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    return Array.from({ length: 5 }, (_, i) => {
+      if (i < fullStars) {
+        return <i key={i} className="fas fa-star text-warning"></i>;
+      } else if (i === fullStars && hasHalfStar) {
+        return <i key={i} className="fas fa-star-half-alt text-warning"></i>;
+      } else {
+        return <i key={i} className="far fa-star text-muted"></i>;
+      }
+    });
+  };
 
   useEffect(() => {
     http.get("/api/products/" + slug).then((r) => {
@@ -65,19 +86,21 @@ export default function ProductDetails() {
           <div className="ps-md-4">
             <h1 className="display-6 fw-bold mb-3">{p.name}</h1>
             <div className="mb-3">
-              <div className="text-warning mb-2">
-                <i className="fas fa-star"></i>
-                <i className="fas fa-star"></i>
-                <i className="fas fa-star"></i>
-                <i className="fas fa-star"></i>
-                <i className="fas fa-star"></i>
-                <span className="text-muted ms-2">(4.5/5)</span>
+              <div className="mb-2">
+                {renderStars(p.rating || 0)}
+                <span className="text-muted ms-2">
+                  {p.rating ? `${p.rating.toFixed(1)}/5` : "No ratings yet"} (
+                  {p.numReviews || 0}{" "}
+                  {p.numReviews === 1 ? "review" : "reviews"})
+                </span>
               </div>
             </div>
             <p className="lead text-muted mb-4">{p.description}</p>
 
             <div className="mb-4">
-              <span className="display-4 fw-bold text-primary">${p.price}</span>
+              <span className="display-4 fw-bold text-primary">
+                ETB {p.price.toLocaleString()}
+              </span>
               <span className="text-muted ms-2">Free shipping</span>
             </div>
 
@@ -156,6 +179,13 @@ export default function ProductDetails() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Reviews Section */}
+      <div className="row mt-5">
+        <div className="col-12">
+          <ProductReviews productId={p._id} onRatingUpdate={refreshProduct} />
         </div>
       </div>
     </div>

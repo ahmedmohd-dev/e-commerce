@@ -248,7 +248,10 @@ export default function OrderConfirmation() {
                     </div>
                     <div className="col-md-2 text-end">
                       <span className="fw-bold">
-                        ${(item.price * item.quantity).toFixed(2)}
+                        ETB{" "}
+                        {(
+                          (item.price || 0) * (item.quantity || 1)
+                        ).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -270,17 +273,29 @@ export default function OrderConfirmation() {
             <div className="card-body">
               <div className="d-flex justify-content-between mb-2">
                 <span>Subtotal</span>
-                <span>${order.subtotal.toFixed(2)}</span>
+                <span>
+                  ETB{" "}
+                  {(
+                    order.subtotal ||
+                    order.totalPrice ||
+                    order.total ||
+                    0
+                  ).toLocaleString()}
+                </span>
               </div>
 
-              <div className="d-flex justify-content-between mb-2">
-                <span>Tax (10%)</span>
-                <span>${order.tax.toFixed(2)}</span>
-              </div>
+              {order.tax && (
+                <div className="d-flex justify-content-between mb-2">
+                  <span>Tax</span>
+                  <span>ETB {order.tax.toLocaleString()}</span>
+                </div>
+              )}
 
               <div className="d-flex justify-content-between mb-2">
                 <span>Shipping</span>
-                <span className="text-success">Free</span>
+                <span className="text-success">
+                  {order.shipping === 0 ? "Free" : `ETB ${order.shipping}`}
+                </span>
               </div>
 
               <hr />
@@ -288,7 +303,13 @@ export default function OrderConfirmation() {
               <div className="d-flex justify-content-between mb-4">
                 <span className="h5 fw-bold">Total</span>
                 <span className="h5 fw-bold text-primary">
-                  ${order.total.toFixed(2)}
+                  ETB{" "}
+                  {(
+                    order.totalPrice ||
+                    order.total ||
+                    order.amount ||
+                    0
+                  ).toLocaleString()}
                 </span>
               </div>
 

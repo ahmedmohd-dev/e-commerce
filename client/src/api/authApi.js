@@ -5,6 +5,7 @@ export async function fetchProfile() {
   return data;
 }
 
-
-
-
+export async function registerUser(userData) {
+  const { data } = await http.post("/api/auth/register", userData);
+  return data;
+}

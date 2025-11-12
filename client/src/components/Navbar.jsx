@@ -6,10 +6,12 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { fetchProfile } from "../api/authApi";
 import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoritesContext";
+import SearchBar from "./SearchBar";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState("user");
+  const [role, setRole] = useState("buyer");
+  const [sellerStatus, setSellerStatus] = useState("none");
   const { getTotalItems } = useCart();
   const { items: favorites } = useFavorites();
   useEffect(() => {
@@ -18,10 +20,12 @@ export default function Navbar() {
       if (u) {
         try {
           const profile = await fetchProfile();
-          setRole(profile.role || "user");
+          setRole(profile.role || "buyer");
+          setSellerStatus(profile.sellerStatus || "none");
         } catch {}
       } else {
-        setRole("user");
+        setRole("buyer");
+        setSellerStatus("none");
       }
     });
     return () => unsub();
@@ -30,8 +34,8 @@ export default function Navbar() {
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-light">
       <div className="container">
-        <Link className="navbar-brand" to="/">
-          Shop
+        <Link className="navbar-brand fw-bold text-primary" to="/">
+          MegaMart
         </Link>
         <button
           className="navbar-toggler"
@@ -45,6 +49,7 @@ export default function Navbar() {
           <span className="navbar-toggler-icon"></span>
         </button>
         <div className="collapse navbar-collapse" id="navbarsExample">
+          <SearchBar />
           <ul className="navbar-nav me-auto mb-2 mb-lg-0">
             <li className="nav-item">
               <Link className="nav-link" to="/products">
@@ -57,9 +62,35 @@ export default function Navbar() {
                 QR Scanner
               </Link>
             </li>
+            {/* Show Seller link for approved sellers, pending sellers, or rejected sellers (so they can see status/re-apply) */}
+            {((role === "seller" && sellerStatus === "approved") ||
+              sellerStatus === "pending" ||
+              sellerStatus === "rejected") && (
+              <li className="nav-item">
+                <Link className="nav-link" to="/seller">
+                  Seller
+                  {sellerStatus === "pending" && (
+                    <span
+                      className="badge bg-warning text-dark ms-1"
+                      title="Application pending"
+                    >
+                      Pending
+                    </span>
+                  )}
+                  {sellerStatus === "rejected" && (
+                    <span
+                      className="badge bg-danger ms-1"
+                      title="Application rejected"
+                    >
+                      Rejected
+                    </span>
+                  )}
+                </Link>
+              </li>
+            )}
             {role === "admin" && (
               <li className="nav-item">
-                <Link className="nav-link" to="/admin">
+                <Link className="nav-link" to="/admin/dashboard">
                   Admin
                 </Link>
               </li>
@@ -70,7 +101,7 @@ export default function Navbar() {
               <Link className="nav-link position-relative" to="/favorites">
                 <i className="fas fa-heart"></i>
                 {favorites.length > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill badge-orange">
                     {favorites.length}
                   </span>
                 )}
@@ -80,7 +111,7 @@ export default function Navbar() {
               <Link className="nav-link position-relative" to="/cart">
                 <i className="fas fa-shopping-cart"></i>
                 {getTotalItems() > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill badge-orange">
                     {getTotalItems()}
                   </span>
                 )}
@@ -97,6 +128,18 @@ export default function Navbar() {
             )}
             {user && (
               <>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/profile">
+                    <i className="fas fa-user me-1"></i>
+                    Profile
+                  </Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/disputes">
+                    <i className="fas fa-life-ring me-1"></i>
+                    Disputes
+                  </Link>
+                </li>
                 <li className="nav-item">
                   <span className="nav-link">{user.email}</span>
                 </li>

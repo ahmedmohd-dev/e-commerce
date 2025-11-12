@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
+import http from "../api/http";
 
 export const generateReceipt = async (order) => {
   const doc = new jsPDF();
@@ -203,8 +204,15 @@ export const generatePaymentQRCode = async (paymentData) => {
 
 export const generateReceiptDownloadQRCode = async (order) => {
   try {
-    // Create a direct download URL that will trigger PDF download
-    const downloadUrl = `${window.location.origin}/api/receipt/download/${order._id}`;
+    // Build direct download URL against API base (not client origin)
+    const apiBase =
+      (typeof import.meta !== "undefined" &&
+        import.meta.env &&
+        import.meta.env.VITE_API_URL) ||
+      (http && http.defaults && http.defaults.baseURL) ||
+      "http://localhost:5000";
+    const base = String(apiBase).replace(/\/$/, "");
+    const downloadUrl = `${base}/api/receipt/download/${order._id}`;
 
     // Use the direct download URL as QR code content
     // This will make phones auto-download when scanned

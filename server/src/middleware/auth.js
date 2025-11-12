@@ -10,13 +10,17 @@ module.exports = async function auth(req, res, next) {
     if (!admin) return res.status(500).json({ message: "Auth not configured" });
     const decoded = await admin.auth().verifyIdToken(token);
     req.firebase = decoded;
+    // Find or create user, but don't overwrite existing sellerStatus or role
     const user = await User.findOneAndUpdate(
       { firebaseUid: decoded.uid },
       {
-        $setOnInsert: {
+        $set: {
           email: decoded.email || "",
-          displayName: decoded.name || "",
-          role: "user",
+          displayName: decoded.name || decoded.displayName || "",
+        },
+        $setOnInsert: {
+          role: "buyer",
+          sellerStatus: "none",
         },
       },
       { new: true, upsert: true }
@@ -27,8 +31,3 @@ module.exports = async function auth(req, res, next) {
     return res.status(401).json({ message: "Invalid token" });
   }
 };
-
-
-
-
-

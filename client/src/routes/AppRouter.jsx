@@ -7,9 +7,18 @@ import Cart from "../pages/Cart";
 import Checkout from "../pages/Checkout";
 import Favorites from "../pages/Favorites";
 import OrderConfirmation from "../pages/OrderConfirmation";
+import OrderTracking from "../pages/OrderTracking";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import QRScanner from "../pages/QRScanner";
+import Profile from "../pages/Profile";
+import AdminProducts from "../pages/AdminProducts";
+import AdminDashboard from "../pages/AdminDashboard";
+import AdminCategories from "../pages/AdminCategories";
+import AdminBrands from "../pages/AdminBrands";
+import SellerDashboard from "../pages/SellerDashboard";
+import DisputePage from "../pages/DisputePage";
+import ContactSellerPage from "../pages/ContactSellerPage";
 import Navbar from "../components/Navbar.jsx";
 import { auth } from "../auth/firebase";
 import { useEffect, useState } from "react";
@@ -61,9 +70,89 @@ export default function AppRouter() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/order-tracking/:orderId"
+                element={
+                  <ProtectedRoute>
+                    <OrderTracking />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/qr-scanner" element={<QRScanner />} />
+              <Route
+                path="/seller"
+                element={
+                  <ProtectedRoute>
+                    <SellerDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/products"
+                element={
+                  <ProtectedRoute>
+                    <AdminProducts />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/categories"
+                element={
+                  <ProtectedRoute>
+                    <AdminCategories />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/brands"
+                element={
+                  <ProtectedRoute>
+                    <AdminBrands />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/disputes"
+                element={
+                  <ProtectedRoute>
+                    <DisputePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/disputes/new/:orderId"
+                element={
+                  <ProtectedRoute>
+                    <DisputePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/orders/:orderId/contact"
+                element={
+                  <ProtectedRoute>
+                    <ContactSellerPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>

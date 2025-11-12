@@ -1,5 +1,8 @@
 const express = require("express");
 const User = require("../models/User");
+const Product = require("../models/Product");
+const Category = require("../models/Category");
+const Brand = require("../models/Brand");
 const router = express.Router();
 
 // Temporary utility endpoint to promote a Firebase UID to admin
@@ -30,5 +33,52 @@ router.post("/make-admin", async (req, res) => {
 
 module.exports = router;
 
+// Seed helpers (guarded by ADMIN_SECRET)
+router.post("/seed-categories-brands", async (req, res) => {
+  try {
+    const provided = req.query.secret || req.headers["x-admin-secret"];
+    const expected = process.env.ADMIN_SECRET;
+    if (!expected || provided !== expected) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
 
+    const categories = await Product.distinct("category", {
+      category: { $ne: "" },
+    });
+    const brands = await Product.distinct("brand", { brand: { $ne: "" } });
 
+    const slugify = (s) =>
+      String(s)
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-");
+
+    const catOps = categories.map((name) => ({
+      updateOne: {
+        filter: { slug: slugify(name) },
+        update: { $setOnInsert: { name, slug: slugify(name), isActive: true } },
+        upsert: true,
+      },
+    }));
+    const brOps = brands.map((name) => ({
+      updateOne: {
+        filter: { slug: slugify(name) },
+        update: { $setOnInsert: { name, slug: slugify(name), isActive: true } },
+        upsert: true,
+      },
+    }));
+
+    if (catOps.length) await Category.bulkWrite(catOps);
+    if (brOps.length) await Brand.bulkWrite(brOps);
+
+    return res.json({
+      ok: true,
+      categoriesCount: catOps.length,
+      brandsCount: brOps.length,
+    });
+  } catch (e) {
+    return res.status(500).json({ message: "Error", error: e.message });
+  }
+});

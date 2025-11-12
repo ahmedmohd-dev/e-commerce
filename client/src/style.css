@@ -1,9 +1,20 @@
 /* Custom styles for the e-commerce app */
 body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f8f9fa;
+  background-color: #fff7ed;
   margin: 0;
   padding: 0;
+}
+
+/* Bootstrap theme overrides - shift primary/links from blue to orange */
+:root {
+  --bs-primary: #f97316;
+  --bs-primary-rgb: 249, 115, 22;
+  --bs-link-color: #ea580c;
+  --bs-link-hover-color: #c2410c;
+  --bs-focus-ring-color: rgba(249, 115, 22, 0.25);
+  --bs-nav-pills-link-active-bg: #f97316;
+  --bs-nav-pills-link-active-color: #ffffff;
 }
 
 .product-card {
@@ -33,22 +44,190 @@ body {
   border-radius: 10px;
 }
 
+/* Hero header */
+.hero-gradient {
+  background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%);
+  border-radius: 16px;
+  color: #fff;
+  padding: 32px 24px;
+  box-shadow: 0 10px 25px rgba(249, 115, 22, 0.25);
+}
+
+.hero-title {
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.hero-subtitle {
+  opacity: 0.95;
+}
+
+/* Filter bar */
+.filter-card {
+  border-radius: 14px;
+}
+
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-icon .icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+}
+
+.input-with-icon input {
+  padding-left: 40px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-weight: 600;
+}
+
+/* Orange badge for stock labels */
+.badge-orange {
+  background: #fff1e6;
+  color: #c2410c;
+  border: 1px solid #f97316;
+}
+
+/* Product image utility */
+.product-img-cover {
+  height: 200px;
+  object-fit: cover;
+  width: 100%;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+/* Make product cards equal height regardless of text length */
+.product-card {
+  display: flex;
+  flex-direction: column;
+}
+.product-card .card-body {
+  display: flex;
+  flex-direction: column;
+}
+.product-card .card-title {
+  min-height: 48px; /* ~2 lines */
+}
+.product-card .card-text {
+  min-height: 60px; /* ~3 lines */
+}
+
+/* Truncate to 2 lines */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Truncate to 3 lines */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .bg-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%) !important;
 }
 
 .text-primary {
-  color: #667eea !important;
+  color: #f97316 !important;
+}
+
+/* Links */
+a {
+  color: var(--bs-link-color);
+}
+a:hover {
+  color: var(--bs-link-hover-color);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%);
   border: none;
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  background: linear-gradient(135deg, #ea580c 0%, #f59e0b 100%);
   transform: translateY(-2px);
+}
+
+/* Custom orange buttons */
+.btn-orange {
+  color: #fff;
+  background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%);
+  border: 1px solid #f97316;
+}
+.btn-orange:hover,
+.btn-orange:focus {
+  color: #fff;
+  background: linear-gradient(135deg, #ea580c 0%, #f59e0b 100%);
+  border-color: #ea580c;
+}
+
+.btn-orange-outline {
+  color: #c2410c;
+  background: transparent;
+  border: 1px solid #f59e0b;
+}
+.btn-orange-outline:hover,
+.btn-orange-outline:focus {
+  color: #fff;
+  background: #f97316;
+  border-color: #f97316;
+}
+
+/* Outline primary buttons to orange */
+.btn-outline-primary {
+  color: #f97316;
+  border-color: #f97316;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+  color: #fff;
+  background-color: #f97316;
+  border-color: #f97316;
+}
+
+/* Nav pills -> orange theme */
+.nav-pills .nav-link {
+  color: #c2410c;
+  background-color: transparent;
+}
+.nav-pills .nav-link:hover {
+  color: #ea580c;
+}
+.nav-pills .nav-link.active,
+.nav-pills .show > .nav-link {
+  color: #fff !important;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+  border: none !important;
+  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.25) !important;
+}
+
+/* Inputs/selects focus ring to orange */
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 0.25rem rgba(249, 115, 22, 0.25);
 }
 
 /* Loading animation */
@@ -78,10 +257,274 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #667eea;
+  background: #f97316;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #5a6fd8;
+  background: #ea580c;
+}
+
+/* Profile Page Styles */
+.avatar-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+}
+
+.card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(249, 115, 22, 0.05);
+}
+
+.badge {
+  font-size: 0.75em;
+  padding: 0.5em 0.75em;
+}
+
+/* Animation for stats cards */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .avatar-circle {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+
+  .table-responsive {
+    font-size: 0.9em;
+  }
+
+  /* Smaller product image on mobile */
+  .product-img-cover {
+    height: 160px;
+  }
+}
+
+/* ===== Admin Dashboard KPI (Orange Theme) ===== */
+.kpi-card {
+  position: relative;
+  border-radius: 16px;
+  padding: 18px 16px;
+  color: #fff;
+  overflow: hidden;
+  min-height: 120px;
+  box-shadow: 0 10px 24px rgba(249, 115, 22, 0.18);
+}
+.kpi-card .kpi-top {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  opacity: 0.25;
+  font-size: 48px;
+}
+.kpi-card .kpi-icon {
+  display: inline-flex;
+  width: 56px;
+  height: 56px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 14px;
+}
+.kpi-card .kpi-content {
+  position: relative;
+}
+.kpi-card .kpi-label {
+  font-size: 12px;
+  opacity: 0.9;
+  letter-spacing: 0.4px;
+}
+.kpi-card .kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+}
+.kpi-orange {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+}
+.kpi-amber {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+}
+.kpi-coral {
+  background: linear-gradient(135deg, #f59e0b 0%, #fb923c 100%);
+}
+.kpi-apricot {
+  background: linear-gradient(135deg, #ffb277 0%, #fb923c 100%);
+}
+
+/* Replace default blue bars with orange family */
+.progress-bar {
+  background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%) !important;
+}
+
+/* KPI trend + sparkline animations */
+@keyframes trendPulse {
+  0% {
+    transform: translateY(0);
+    filter: saturate(1);
+  }
+  50% {
+    transform: translateY(-1px);
+    filter: saturate(1.15);
+  }
+  100% {
+    transform: translateY(0);
+    filter: saturate(1);
+  }
+}
+.trend-anim {
+  animation: trendPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes strokeDraw {
+  from {
+    stroke-dasharray: 200;
+    stroke-dashoffset: 200;
+  }
+  to {
+    stroke-dasharray: 200;
+    stroke-dashoffset: 0;
+  }
+}
+.sparkline-path-animate {
+  animation: strokeDraw 1s ease-out 1;
+}
+
+/* Orange theme polish: pagination, checks, and info color */
+:root {
+  --bs-info: #f59e0b;
+  --bs-info-rgb: 245, 158, 11;
+}
+
+.page-link {
+  color: #ea580c;
+  border-color: #ffd7b0;
+}
+.page-link:hover {
+  color: #c2410c;
+  border-color: #ffc488;
+  background-color: #fff7ed;
+}
+.page-item.active .page-link {
+  color: #fff;
+  background-color: #f97316;
+  border-color: #f97316;
+}
+.page-item.disabled .page-link {
+  color: #e2a66e;
+  border-color: #ffe3c4;
+}
+
+/* Checkbox/Radio checked state */
+.form-check-input:checked {
+  background-color: #f97316;
+  border-color: #f97316;
+}
+
+/* Badges using info should look amber, not blue */
+.bg-info {
+  background-color: rgba(245, 158, 11, 1) !important;
+}
+.text-bg-info {
+  color: #1f2937 !important;
+  background-color: rgba(245, 158, 11, 0.2) !important;
+}
+
+/* Outline info buttons toward amber */
+.btn-outline-info {
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+.btn-outline-info:hover,
+.btn-outline-info:focus {
+  color: #fff;
+  background-color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+/* Dual range slider (orange theme) */
+.range-wrap {
+  position: relative;
+}
+.range-track {
+  position: relative;
+  height: 6px;
+  background: #ffe7ce;
+  border-radius: 6px;
+}
+.range-fill {
+  position: absolute;
+  height: 6px;
+  background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%);
+  border-radius: 6px;
+}
+.range-inputs {
+  position: relative;
+  height: 24px;
+}
+.range-inputs input[type="range"] {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  pointer-events: none; /* overlap */
+  -webkit-appearance: none;
+  background: transparent;
+}
+.range-inputs input[type="range"]::-webkit-slider-thumb {
+  pointer-events: auto;
+  -webkit-appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #f97316;
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.25);
+}
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: #c2410c;
+}
+
+/* Sticky filter bar on mobile */
+@media (max-width: 768px) {
+  .filter-card.sticky-mobile {
+    position: sticky;
+    top: 56px; /* below navbar */
+    z-index: 1030;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
 }

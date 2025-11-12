@@ -11,8 +11,20 @@ function buildProductFilters(query) {
       { category: regex },
     ];
   }
-  if (query.category) filters.category = query.category;
-  if (query.brand) filters.brand = query.brand;
+  // Case-insensitive category filtering (supports both name and slug)
+  if (query.category) {
+    const escaped = query.category
+      .trim()
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const categoryRegex = new RegExp(`^${escaped}$`, "i");
+    filters.category = categoryRegex;
+  }
+  // Case-insensitive brand filtering (supports both name and slug)
+  if (query.brand) {
+    const escaped = query.brand.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const brandRegex = new RegExp(`^${escaped}$`, "i");
+    filters.brand = brandRegex;
+  }
   if (query.minPrice || query.maxPrice) {
     filters.price = {};
     if (query.minPrice) filters.price.$gte = Number(query.minPrice);
@@ -56,7 +68,30 @@ exports.getProductBySlug = async (req, res) => {
   }
 };
 
+// Search autocomplete
+exports.searchAutocomplete = async (req, res) => {
+  try {
+    const query = req.query.q || "";
+    if (!query || query.length < 2) {
+      return res.json([]);
+    }
 
+    const searchRegex = new RegExp(query, "i");
+    const products = await Product.find({
+      isActive: true,
+      $or: [
+        { name: searchRegex },
+        { description: searchRegex },
+        { brand: searchRegex },
+        { category: searchRegex },
+      ],
+    })
+      .select("name slug images price rating numReviews")
+      .limit(8)
+      .sort("-rating -numReviews");
 
-
-
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ message: "Search failed" });
+  }
+};

@@ -7,8 +7,8 @@ const generateReceiptPDF = async (order) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  // Colors
-  const primaryColor = "#2563eb";
+  // Colors (orange theme)
+  const primaryColor = "#F97316";
   const secondaryColor = "#64748b";
   const successColor = "#10b981";
   const warningColor = "#f59e0b";
@@ -28,7 +28,7 @@ const generateReceiptPDF = async (order) => {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(28);
   doc.setFont("helvetica", "bold");
-  doc.text("🛍️ E-Commerce Store", 20, 25);
+  doc.text("🛍️ MegaMart", 20, 25);
 
   // Receipt title
   doc.setFontSize(14);
@@ -39,30 +39,43 @@ const generateReceiptPDF = async (order) => {
   doc.setTextColor(0, 0, 0);
   doc.setFillColor(255, 255, 255);
   doc.rect(15, 60, pageWidth - 30, 25, "F");
-  
+
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.text(`Order #${order._id.slice(-8).toUpperCase()}`, 25, 75);
-  
+
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(secondaryColor);
-  doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  })}`, 25, 82);
-  
-  doc.text(`Time: ${new Date(order.createdAt).toLocaleTimeString('en-US', { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  })}`, 25, 88);
+  doc.text(
+    `Date: ${new Date(order.createdAt).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })}`,
+    25,
+    82
+  );
+
+  doc.text(
+    `Time: ${new Date(order.createdAt).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`,
+    25,
+    88
+  );
 
   // Status badge
-  const statusColor = order.status === 'completed' ? successColor : 
-                     order.status === 'pending' ? warningColor : 
-                     order.status === 'cancelled' ? dangerColor : primaryColor;
-  
+  const statusColor =
+    order.status === "completed"
+      ? successColor
+      : order.status === "pending"
+      ? warningColor
+      : order.status === "cancelled"
+      ? dangerColor
+      : primaryColor;
+
   doc.setFillColor(statusColor);
   doc.rect(pageWidth - 80, 65, 60, 15, "F");
   doc.setTextColor(255, 255, 255);
@@ -74,35 +87,47 @@ const generateReceiptPDF = async (order) => {
   doc.setTextColor(0, 0, 0);
   doc.setFillColor(255, 255, 255);
   doc.rect(15, 95, pageWidth - 30, 40, "F");
-  
+
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.text("👤 Customer Information", 25, 110);
-  
+
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text(`Name: ${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`, 25, 120);
+  doc.text(
+    `Name: ${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`,
+    25,
+    120
+  );
   doc.text(`Email: ${order.shippingAddress.email}`, 25, 127);
   doc.text(`Phone: ${order.shippingAddress.phone}`, 25, 134);
 
   // Shipping Address Section
   doc.setFillColor(255, 255, 255);
   doc.rect(15, 145, pageWidth - 30, 50, "F");
-  
+
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.text("📍 Shipping Address", 25, 160);
-  
+
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.text(order.shippingAddress.address, 25, 170);
-  doc.text(`${order.shippingAddress.city}, ${order.shippingAddress.state}`, 25, 177);
-  doc.text(`${order.shippingAddress.zipCode}, ${order.shippingAddress.country}`, 25, 184);
+  doc.text(
+    `${order.shippingAddress.city}, ${order.shippingAddress.state}`,
+    25,
+    177
+  );
+  doc.text(
+    `${order.shippingAddress.zipCode}, ${order.shippingAddress.country}`,
+    25,
+    184
+  );
 
   // Order Items Section
   doc.setFillColor(255, 255, 255);
-  doc.rect(15, 205, pageWidth - 30, 30 + (order.items.length * 15), "F");
-  
+  doc.rect(15, 205, pageWidth - 30, 30 + order.items.length * 15, "F");
+
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.text("🛒 Order Items", 25, 220);
@@ -123,7 +148,7 @@ const generateReceiptPDF = async (order) => {
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  
+
   order.items.forEach((item, index) => {
     doc.text(`${index + 1}. ${item.name}`, 30, yPosition);
     doc.text(`${item.quantity}`, 120, yPosition);
@@ -136,28 +161,32 @@ const generateReceiptPDF = async (order) => {
   const paymentY = yPosition + 20;
   doc.setFillColor(255, 255, 255);
   doc.rect(15, paymentY, pageWidth - 30, 30, "F");
-  
+
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.text("💳 Payment Information", 25, paymentY + 15);
-  
+
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.text(`Method: ${order.paymentMethod.toUpperCase()}`, 25, paymentY + 25);
 
   if (order.paymentDetails?.transactionId) {
-    doc.text(`Transaction ID: ${order.paymentDetails.transactionId}`, 25, paymentY + 32);
+    doc.text(
+      `Transaction ID: ${order.paymentDetails.transactionId}`,
+      25,
+      paymentY + 32
+    );
   }
 
   // Order Summary Section
   const summaryY = paymentY + 50;
   doc.setFillColor(255, 255, 255);
   doc.rect(15, summaryY, pageWidth - 30, 50, "F");
-  
+
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.text("💰 Order Summary", 25, summaryY + 15);
-  
+
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.text(`Subtotal: $${order.subtotal.toFixed(2)}`, 120, summaryY + 25);
@@ -176,7 +205,7 @@ const generateReceiptPDF = async (order) => {
   const qrY = summaryY + 70;
   doc.setFillColor(255, 255, 255);
   doc.rect(15, qrY, pageWidth - 30, 90, "F");
-  
+
   // QR Code title
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(14);
@@ -184,7 +213,12 @@ const generateReceiptPDF = async (order) => {
   doc.text("📱 Download Receipt", 25, qrY + 15);
 
   try {
-    const downloadUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/api/receipt/download/${order._id}`;
+    const serverBase =
+      process.env.SERVER_PUBLIC_URL ||
+      process.env.API_URL ||
+      "http://localhost:5000";
+    const base = String(serverBase).replace(/\/$/, "");
+    const downloadUrl = `${base}/api/receipt/download/${order._id}`;
     const qrCodeDataURL = await QRCode.toDataURL(downloadUrl, {
       width: 80,
       margin: 2,
@@ -193,16 +227,19 @@ const generateReceiptPDF = async (order) => {
     // QR Code positioned in center
     const qrCodeX = (pageWidth - 80) / 2;
     const qrCodeY = qrY + 25;
-    
+
     // Add QR Code image
-    doc.addImage(qrCodeDataURL, 'PNG', qrCodeX, qrCodeY, 80, 80);
-    
+    doc.addImage(qrCodeDataURL, "PNG", qrCodeX, qrCodeY, 80, 80);
+
     // Instructions below QR code
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(secondaryColor);
-    doc.text("Scan with your mobile device to download this receipt", qrCodeX - 10, qrY + 90);
-    
+    doc.text(
+      "Scan with your mobile device to download this receipt",
+      qrCodeX - 10,
+      qrY + 90
+    );
   } catch (error) {
     console.error("QR Code generation failed:", error);
   }
@@ -211,7 +248,7 @@ const generateReceiptPDF = async (order) => {
   const footerY = Math.max(pageHeight - 50, qrY + 110);
   doc.setFillColor(darkGray);
   doc.rect(0, footerY, pageWidth, 50, "F");
-  
+
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
@@ -266,5 +303,3 @@ const downloadReceipt = async (req, res) => {
 module.exports = {
   downloadReceipt,
 };
-
-

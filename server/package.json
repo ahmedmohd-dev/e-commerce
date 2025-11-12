@@ -7,22 +7,27 @@
     "start": "node src/server.js",
     "seed": "node src/utils/seed.js",
     "make:admin": "node src/utils/make-admin.js",
+    "seed:categories-brands": "node src/utils/seed-categories-brands.js",
+    "migrate:products": "node src/utils/migrate-products-category-brand.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-validator": "^7.2.1",
     "firebase-admin": "^13.5.0",
+    "helmet": "^8.1.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.3",
     "mongoose": "^8.19.1",
     "morgan": "^1.10.1",
+    "nodemailer": "^7.0.10",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
