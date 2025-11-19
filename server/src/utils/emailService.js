@@ -134,8 +134,10 @@ const getOrderConfirmationTemplate = (order, customerEmail) => {
 const getStatusUpdateTemplate = (order, newStatus) => {
   const statusMessages = {
     paid: "Payment received! Your order is being processed.",
+    processing:
+      "We've released your order to the seller. They will prepare it soon.",
     shipped: "Your order has been shipped!",
-    delivered: "Your order has been delivered!",
+    completed: "Your order has been delivered!",
     cancelled: "Your order has been cancelled.",
   };
 
@@ -322,4 +324,232 @@ const getSellerStatusTemplate = (user, status) => {
 exports.sendSellerStatusUpdate = async (user, status) => {
   const { subject, html } = getSellerStatusTemplate(user, status);
   return await sendEmail(user.email, subject, html);
+};
+
+// Dispute email templates
+const getDisputeCreatedTemplate = (dispute, order, buyerEmail) => {
+  return {
+    subject: `Dispute Created - Order #${getShortOrderId(order)} - MegaMart`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 20px; border-radius: 0 0 8px 8px; }
+          .dispute-card { background: white; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #ef4444; }
+          .button { display: inline-block; padding: 12px 24px; background: #ef4444; color: white; text-decoration: none; border-radius: 6px; margin-top: 15px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🛍️ MegaMart</h1>
+            <h2>Dispute Created</h2>
+          </div>
+          <div class="content">
+            <p>Hello,</p>
+            <p>We've received your dispute request. Our support team will review it shortly.</p>
+            
+            <div class="dispute-card">
+              <h3>Dispute Details</h3>
+              <p><strong>Order Number:</strong> #${getShortOrderId(order)}</p>
+              <p><strong>Reason:</strong> ${dispute.reason || "N/A"}</p>
+              ${
+                dispute.details
+                  ? `<p><strong>Details:</strong> ${dispute.details}</p>`
+                  : ""
+              }
+              <p><strong>Status:</strong> <span style="color: #f59e0b; font-weight: bold;">Open</span></p>
+              <p><strong>Created:</strong> ${
+                dispute.createdAt
+                  ? new Date(dispute.createdAt).toLocaleString()
+                  : new Date().toLocaleString()
+              }</p>
+            </div>
+            
+            <p>You can track the status of your dispute and communicate with our support team through your account.</p>
+            
+            <a href="${
+              process.env.CLIENT_URL || "http://localhost:5173"
+            }/disputes" class="button">View Dispute</a>
+            
+            <p style="margin-top: 30px; color: #666; font-size: 12px;">
+              If you have any questions, please contact us at support@megamart.com
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  };
+};
+
+const getDisputeUpdateTemplate = (
+  dispute,
+  order,
+  buyerEmail,
+  updateType,
+  adminMessage
+) => {
+  const statusMessages = {
+    accepted: {
+      title: "Dispute Accepted",
+      message:
+        "Your dispute has been accepted. Our team is working on resolving it.",
+      color: "#10b981",
+    },
+    rejected: {
+      title: "Dispute Update",
+      message:
+        "Your dispute has been reviewed. Please see the resolution details below.",
+      color: "#ef4444",
+    },
+    resolved: {
+      title: "Dispute Resolved",
+      message:
+        "Your dispute has been resolved. Please see the resolution details below.",
+      color: "#3b82f6",
+    },
+    message: {
+      title: "New Message on Your Dispute",
+      message:
+        "You have received a new message from our support team regarding your dispute.",
+      color: "#f59e0b",
+    },
+  };
+
+  const statusInfo = statusMessages[updateType] || {
+    title: "Dispute Update",
+    message: "Your dispute has been updated.",
+    color: "#6b7280",
+  };
+
+  return {
+    subject: `${statusInfo.title} - Order #${getShortOrderId(
+      order
+    )} - MegaMart`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, ${
+            statusInfo.color
+          } 0%, ${
+      statusInfo.color
+    }dd 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 20px; border-radius: 0 0 8px 8px; }
+          .update-card { background: white; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid ${
+            statusInfo.color
+          }; }
+          .message-box { background: #f3f4f6; padding: 15px; margin: 15px 0; border-radius: 6px; border-left: 3px solid ${
+            statusInfo.color
+          }; }
+          .button { display: inline-block; padding: 12px 24px; background: ${
+            statusInfo.color
+          }; color: white; text-decoration: none; border-radius: 6px; margin-top: 15px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🛍️ MegaMart</h1>
+            <h2>${statusInfo.title}</h2>
+          </div>
+          <div class="content">
+            <p>Hello,</p>
+            <p><strong>${statusInfo.message}</strong></p>
+            
+            <div class="update-card">
+              <h3>Dispute Information</h3>
+              <p><strong>Order Number:</strong> #${getShortOrderId(order)}</p>
+              <p><strong>Reason:</strong> ${dispute.reason || "N/A"}</p>
+              <p><strong>Current Status:</strong> <span style="color: ${
+                statusInfo.color
+              }; font-weight: bold;">${
+      dispute.status
+        ? dispute.status.charAt(0).toUpperCase() + dispute.status.slice(1)
+        : "Open"
+    }</span></p>
+              ${
+                dispute.resolution
+                  ? `<p><strong>Resolution:</strong> ${dispute.resolution}</p>`
+                  : ""
+              }
+              <p><strong>Updated:</strong> ${new Date().toLocaleString()}</p>
+            </div>
+            
+            ${
+              adminMessage
+                ? `
+            <div class="message-box">
+              <h4>Message from Support Team:</h4>
+              <p>${adminMessage}</p>
+            </div>
+            `
+                : ""
+            }
+            
+            ${
+              updateType === "message"
+                ? `
+            <p>You can reply to this message through your dispute page. Our team is here to help resolve your issue.</p>
+            `
+                : ""
+            }
+            
+            ${
+              updateType === "resolved"
+                ? `
+            <p>If you have any further questions or concerns, please don't hesitate to contact our support team.</p>
+            `
+                : ""
+            }
+            
+            <a href="${
+              process.env.CLIENT_URL || "http://localhost:5173"
+            }/disputes" class="button">View Dispute</a>
+            
+            <p style="margin-top: 30px; color: #666; font-size: 12px;">
+              If you have any questions, please contact us at support@megamart.com
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  };
+};
+
+// Send dispute created email
+exports.sendDisputeCreated = async (dispute, order, buyerEmail) => {
+  const { subject, html } = getDisputeCreatedTemplate(
+    dispute,
+    order,
+    buyerEmail
+  );
+  return await sendEmail(buyerEmail, subject, html);
+};
+
+// Send dispute update email
+exports.sendDisputeUpdate = async (
+  dispute,
+  order,
+  buyerEmail,
+  updateType,
+  adminMessage
+) => {
+  const { subject, html } = getDisputeUpdateTemplate(
+    dispute,
+    order,
+    buyerEmail,
+    updateType,
+    adminMessage
+  );
+  return await sendEmail(buyerEmail, subject, html);
 };

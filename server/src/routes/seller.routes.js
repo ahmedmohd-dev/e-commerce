@@ -54,4 +54,24 @@ router.get(
   ctrl.sellerTopProducts
 );
 
+// Seller contact threads
+router.get(
+  "/contact/threads",
+  auth,
+  requireApprovedSeller,
+  ctrl.listMyContactThreads
+);
+router.get(
+  "/contact/threads/:threadId",
+  auth,
+  requireApprovedSeller,
+  ctrl.getContactThread
+);
+router.post(
+  "/contact/threads/:threadId/reply",
+  auth,
+  requireApprovedSeller,
+  ctrl.replyToContactThread
+);
+
 module.exports = router;

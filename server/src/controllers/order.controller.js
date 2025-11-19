@@ -1,9 +1,12 @@
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 const Dispute = require("../models/Dispute");
-const { sendOrderConfirmation } = require("../utils/emailService");
 const User = require("../models/User");
 const mongoose = require("mongoose");
+const {
+  sendOrderConfirmation,
+  sendDisputeCreated,
+} = require("../utils/emailService");
 
 exports.createOrder = async (req, res) => {
   try {
@@ -181,10 +184,10 @@ exports.createOrderDispute = async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    // Check if order is already completed/delivered - disputes should be for pending issues
-    if (order.status === "completed" || order.status === "delivered") {
+    // Disputes are only allowed before the order is completed or cancelled
+    if (order.status === "completed" || order.status === "cancelled") {
       return res.status(400).json({
-        message: "Cannot create dispute for completed or delivered orders",
+        message: "Cannot create dispute for completed or cancelled orders",
       });
     }
 
@@ -243,6 +246,17 @@ exports.createOrderDispute = async (req, res) => {
       attachments: attachmentDocs,
       messages: initialMessage ? [initialMessage] : [],
     });
+
+    // Send email notification to buyer
+    try {
+      const buyer = await User.findById(req.user._id).select("email").lean();
+      if (buyer?.email) {
+        await sendDisputeCreated(dispute, order, buyer.email);
+      }
+    } catch (emailErr) {
+      console.error("Failed to send dispute creation email:", emailErr);
+      // Don't fail the request if email fails
+    }
 
     res.status(201).json(dispute);
   } catch (err) {

@@ -1,8 +1,10 @@
 const Product = require("../models/Product");
 const User = require("../models/User");
 const Order = require("../models/Order");
+const ContactThread = require("../models/ContactThread");
 const mongoose = require("mongoose");
 const { sendStatusUpdate } = require("../utils/emailService");
+const { canSellerTransition } = require("../utils/orderStatusRules");
 
 exports.applyForSeller = async (req, res) => {
   try {
@@ -118,6 +120,10 @@ exports.listMyOrders = async (req, res) => {
           status: 1,
           createdAt: 1,
           paymentDetails: 1,
+          total: 1,
+          totalPrice: 1,
+          amount: 1,
+          subtotal: 1,
           items: {
             $filter: {
               input: "$items",
@@ -190,6 +196,9 @@ exports.listMyOrders = async (req, res) => {
       items: r.items,
       subtotal: r.sellerSubtotal,
       net: r.sellerNet,
+      total: r.total,
+      totalPrice: r.totalPrice,
+      amount: r.amount,
     }));
 
     return res.json({ items, total, page: Number(page), pages });
@@ -203,22 +212,21 @@ exports.sellerUpdateOrderStatus = async (req, res) => {
   try {
     const sellerId = req.user._id;
     const { orderId } = req.params;
-    const { status, paymentVerified } = req.body || {};
+    const { status } = req.body || {};
 
-    const allowedStatuses = [
-      "pending",
-      "paid",
-      "shipped",
-      "completed",
-      "cancelled",
-    ];
-    if (status && !allowedStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
+    if (!status) {
+      return res.status(400).json({ message: "Status is required" });
     }
 
     const order = await Order.findById(orderId).populate("user");
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (!order.paymentDetails?.verifiedByAdmin) {
+      return res
+        .status(400)
+        .json({ message: "Wait for admin to verify the payment first" });
     }
 
     const itemsForSeller = order.items.filter(
@@ -232,40 +240,34 @@ exports.sellerUpdateOrderStatus = async (req, res) => {
       (item) => !item.seller || String(item.seller) === String(sellerId)
     );
 
-    if (status && !allItemsBelongToSeller && status !== order.status) {
+    if (!allItemsBelongToSeller && status !== order.status) {
       return res.status(403).json({
         message:
           "Cannot update overall order status because this order contains products from multiple sellers.",
       });
     }
 
-    let statusChanged = false;
-    if (status && order.status !== status) {
-      order.status = status;
-      statusChanged = true;
+    const { allowed, reason } = canSellerTransition(order.status, status, {
+      paymentVerified: !!order.paymentDetails?.verifiedByAdmin,
+    });
+    if (!allowed) {
+      return res.status(400).json({ message: reason || "Invalid transition" });
     }
 
-    if (typeof paymentVerified === "boolean") {
-      order.paymentDetails = order.paymentDetails || {};
-      order.paymentDetails.verifiedBySeller = paymentVerified;
-      order.paymentDetails.sellerVerifiedAt = paymentVerified
-        ? new Date()
-        : null;
-      if (paymentVerified && !order.paymentDetails.status) {
-        order.paymentDetails.status = "verified";
-      }
+    if (order.status === status) {
+      return res.json({ success: true, order });
     }
+
+    order.status = status;
 
     await order.save();
 
-    if (statusChanged) {
-      try {
-        if (order.user?.email) {
-          await sendStatusUpdate(order, order.status, order.user.email);
-        }
-      } catch (emailErr) {
-        console.error("Failed to send order status email:", emailErr);
+    try {
+      if (order.user?.email) {
+        await sendStatusUpdate(order, order.status, order.user.email);
       }
+    } catch (emailErr) {
+      console.error("Failed to send order status email:", emailErr);
     }
 
     return res.json({ success: true, order });
@@ -329,36 +331,81 @@ exports.updateItemShippingStatus = async (req, res) => {
 exports.sellerOverviewStats = async (req, res) => {
   try {
     const sellerId = req.user._id;
+    const sellerObjectId = new mongoose.Types.ObjectId(sellerId);
 
-    // Count seller's products
-    const productsCount = await Product.countDocuments({ seller: sellerId });
+    // Count seller's products (handle both ObjectId and string)
+    const productsCount = await Product.countDocuments({
+      $or: [
+        { seller: sellerObjectId },
+        { seller: sellerId },
+        { seller: String(sellerId) },
+      ],
+    });
+
+    console.log(
+      `[Seller Stats] Products count for seller ${sellerId}:`,
+      productsCount
+    );
 
     // Get all orders containing seller's products and calculate totals
-    const sellerObjectId = new mongoose.Types.ObjectId(sellerId);
+    const sellerIdStr = String(sellerId);
+
+    // Match orders that have items with this seller (handle both ObjectId and string)
     const pipeline = [
-      { $match: { "items.seller": sellerObjectId } },
+      {
+        $match: {
+          $or: [
+            { "items.seller": sellerObjectId },
+            { "items.seller": sellerIdStr },
+          ],
+        },
+      },
       { $unwind: "$items" },
-      { $match: { "items.seller": sellerObjectId } },
+      {
+        $match: {
+          $or: [
+            { "items.seller": sellerObjectId },
+            { "items.seller": sellerIdStr },
+            { $expr: { $eq: [{ $toString: "$items.seller" }, sellerIdStr] } },
+          ],
+        },
+      },
       {
         $group: {
           _id: null,
           totalOrders: { $addToSet: "$_id" },
           grossRevenue: {
-            $sum: { $multiply: ["$items.price", "$items.quantity"] },
+            $sum: {
+              $multiply: [
+                { $ifNull: ["$items.price", 0] },
+                { $ifNull: ["$items.quantity", 0] },
+              ],
+            },
           },
           netRevenue: {
             $sum: {
               $ifNull: [
                 "$items.sellerEarnings",
-                { $multiply: ["$items.price", "$items.quantity"] },
+                {
+                  $multiply: [
+                    { $ifNull: ["$items.price", 0] },
+                    { $ifNull: ["$items.quantity", 0] },
+                  ],
+                },
               ],
             },
           },
           itemsShipped: {
             $sum: {
               $cond: [
-                { $eq: ["$items.shippingStatus", "shipped"] },
-                "$items.quantity",
+                {
+                  $or: [
+                    { $eq: ["$items.shippingStatus", "shipped"] },
+                    { $eq: ["$items.shippingStatus", "delivered"] },
+                    { $eq: ["$items.shippingStatus", "completed"] },
+                  ],
+                },
+                { $ifNull: ["$items.quantity", 0] },
                 0,
               ],
             },
@@ -367,12 +414,28 @@ exports.sellerOverviewStats = async (req, res) => {
             $sum: {
               $cond: [
                 {
-                  $ne: [
-                    { $ifNull: ["$items.shippingStatus", "pending"] },
-                    "shipped",
+                  $and: [
+                    {
+                      $ne: [
+                        { $ifNull: ["$items.shippingStatus", "pending"] },
+                        "shipped",
+                      ],
+                    },
+                    {
+                      $ne: [
+                        { $ifNull: ["$items.shippingStatus", "pending"] },
+                        "delivered",
+                      ],
+                    },
+                    {
+                      $ne: [
+                        { $ifNull: ["$items.shippingStatus", "pending"] },
+                        "completed",
+                      ],
+                    },
                   ],
                 },
-                "$items.quantity",
+                { $ifNull: ["$items.quantity", 0] },
                 0,
               ],
             },
@@ -382,12 +445,37 @@ exports.sellerOverviewStats = async (req, res) => {
     ];
 
     const statsResult = await Order.aggregate(pipeline);
+    console.log(`🔍 [Seller Stats] Aggregation pipeline executed`);
+    console.log(
+      `🔍 [Seller Stats] Raw aggregation result:`,
+      JSON.stringify(statsResult, null, 2)
+    );
+
     const stats = statsResult[0] || {
       totalOrders: [],
-      totalRevenue: 0,
+      grossRevenue: 0,
+      netRevenue: 0,
       itemsShipped: 0,
       itemsPending: 0,
     };
+
+    // Debug logging
+    console.log(`🔍 [Seller Stats] Seller ID: ${sellerId}`);
+    console.log(`🔍 [Seller Stats] Seller ObjectId: ${sellerObjectId}`);
+    console.log(`🔍 [Seller Stats] Seller ID String: ${sellerIdStr}`);
+    console.log(
+      `🔍 [Seller Stats] Processed stats:`,
+      JSON.stringify(stats, null, 2)
+    );
+    console.log(`🔍 [Seller Stats] Total orders array:`, stats.totalOrders);
+    console.log(
+      `🔍 [Seller Stats] Total orders array length:`,
+      stats.totalOrders?.length || 0
+    );
+    console.log(`🔍 [Seller Stats] Gross Revenue:`, stats.grossRevenue);
+    console.log(`🔍 [Seller Stats] Net Revenue:`, stats.netRevenue);
+    console.log(`🔍 [Seller Stats] Items Shipped:`, stats.itemsShipped);
+    console.log(`🔍 [Seller Stats] Items Pending:`, stats.itemsPending);
 
     // Get low stock products (stock < 10)
     const lowStockProducts = await Product.find({
@@ -399,18 +487,43 @@ exports.sellerOverviewStats = async (req, res) => {
       .limit(5)
       .sort({ stock: 1 });
 
-    return res.json({
+    // Ensure we have valid numbers
+    const ordersCount = Array.isArray(stats.totalOrders)
+      ? stats.totalOrders.length
+      : 0;
+    const grossRevenue = Number(stats.grossRevenue || 0);
+    const netRevenue = Number(stats.netRevenue || grossRevenue || 0);
+    const itemsShipped = Number(stats.itemsShipped || 0);
+    const itemsPending = Number(stats.itemsPending || 0);
+
+    console.log(`✅ [Seller Stats] Final calculated values:`, {
+      products: productsCount,
+      orders: ordersCount,
+      grossRevenue,
+      netRevenue,
+      itemsShipped,
+      itemsPending,
+    });
+
+    const responseData = {
       totals: {
         products: productsCount,
-        orders: stats.totalOrders.length,
-        revenue: stats.netRevenue || stats.grossRevenue || 0,
-        grossRevenue: stats.grossRevenue || 0,
-        netRevenue: stats.netRevenue || stats.grossRevenue || 0,
-        itemsShipped: stats.itemsShipped,
-        itemsPending: stats.itemsPending,
+        orders: ordersCount,
+        revenue: netRevenue,
+        grossRevenue: grossRevenue,
+        netRevenue: netRevenue,
+        itemsShipped: itemsShipped,
+        itemsPending: itemsPending,
       },
       lowStock: lowStockProducts,
-    });
+    };
+
+    console.log(
+      `📤 [Seller Stats] Sending response:`,
+      JSON.stringify(responseData, null, 2)
+    );
+
+    return res.json(responseData);
   } catch (e) {
     console.error("Seller stats error:", e);
     return res.status(500).json({ message: "Failed to load stats" });
@@ -533,5 +646,106 @@ exports.sellerTopProducts = async (req, res) => {
   } catch (e) {
     console.error("Seller top products error:", e);
     return res.status(500).json({ message: "Failed to load top products" });
+  }
+};
+
+// Seller contact threads - list all threads where seller is involved
+exports.listMyContactThreads = async (req, res) => {
+  try {
+    const threads = await ContactThread.find({
+      seller: req.user._id,
+    })
+      .populate("buyer", "email displayName")
+      .populate("order", "status total totalPrice createdAt")
+      .sort("-updatedAt")
+      .lean();
+
+    // Count unread messages (messages from buyer that seller hasn't seen)
+    const threadsWithUnread = threads.map((thread) => {
+      const unreadCount = thread.messages.filter(
+        (msg) => msg.sender === "buyer"
+      ).length;
+      return {
+        ...thread,
+        unreadCount,
+        lastMessage:
+          thread.messages.length > 0
+            ? thread.messages[thread.messages.length - 1]
+            : null,
+      };
+    });
+
+    res.json(threadsWithUnread);
+  } catch (err) {
+    console.error("List seller contact threads error:", err);
+    res.status(500).json({ message: "Failed to load contact threads" });
+  }
+};
+
+// Get a specific contact thread for seller
+exports.getContactThread = async (req, res) => {
+  try {
+    const { threadId } = req.params;
+    const thread = await ContactThread.findOne({
+      _id: threadId,
+      seller: req.user._id,
+    })
+      .populate("buyer", "email displayName")
+      .populate("order", "status total totalPrice createdAt")
+      .lean();
+
+    if (!thread) {
+      return res.status(404).json({ message: "Thread not found" });
+    }
+
+    res.json(thread);
+  } catch (err) {
+    console.error("Get seller contact thread error:", err);
+    res.status(500).json({ message: "Failed to load thread" });
+  }
+};
+
+// Seller reply to buyer message
+exports.replyToContactThread = async (req, res) => {
+  try {
+    const { threadId } = req.params;
+    const { message = "", attachments: attachmentUrls = [] } = req.body || {};
+
+    if (!message.trim() && (!attachmentUrls || attachmentUrls.length === 0)) {
+      return res
+        .status(400)
+        .json({ message: "Message or attachments are required" });
+    }
+
+    const thread = await ContactThread.findOne({
+      _id: threadId,
+      seller: req.user._id,
+    });
+
+    if (!thread) {
+      return res.status(404).json({ message: "Thread not found" });
+    }
+
+    const attachmentDocs = (attachmentUrls || [])
+      .filter((url) => typeof url === "string" && url.trim() !== "")
+      .map((url) => ({
+        url,
+        uploadedBy: req.user._id,
+      }));
+
+    thread.messages.push({
+      sender: "seller",
+      body: message.trim(),
+      attachments: attachmentDocs,
+    });
+    await thread.save();
+
+    await thread.populate("buyer", "email displayName");
+    await thread.populate("order", "status total totalPrice createdAt");
+
+    res.json(thread);
+  } catch (err) {
+    console.error("Seller reply error:", err);
+    res.status(500).json({ message: "Failed to send reply" });
   }
 };

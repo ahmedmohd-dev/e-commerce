@@ -1,4 +1,16 @@
 const User = require("../models/User");
+const Product = require("../models/Product");
+const Order = require("../models/Order");
+const Dispute = require("../models/Dispute");
+const {
+  sendDisputeUpdate,
+  sendStatusUpdate,
+  sendSellerStatusUpdate,
+} = require("../utils/emailService");
+const {
+  canAdminTransition,
+  isTerminalStatus,
+} = require("../utils/orderStatusRules");
 
 exports.listSellers = async (req, res) => {
   try {
@@ -108,13 +120,6 @@ exports.getSellerStats = async (req, res) => {
     return res.status(500).json({ message: "Failed to load seller stats" });
   }
 };
-const Product = require("../models/Product");
-const Order = require("../models/Order");
-const Dispute = require("../models/Dispute");
-const {
-  sendStatusUpdate,
-  sendSellerStatusUpdate,
-} = require("../utils/emailService");
 
 // Products CRUD
 exports.adminListProducts = async (req, res) => {
@@ -163,17 +168,48 @@ exports.adminListOrders = async (req, res) => {
 };
 
 exports.adminUpdateOrderStatus = async (req, res) => {
-  const { status } = req.body; // pending|paid|shipped|completed|cancelled
-  const order = await Order.findByIdAndUpdate(
-    req.params.id,
-    { status },
-    { new: true }
-  ).populate("user");
+  const { status } = req.body; // pending|paid|processing|shipped|completed|cancelled
+  if (!status) {
+    return res.status(400).json({ message: "Status is required" });
+  }
+  const order = await Order.findById(req.params.id).populate("user");
   if (!order) return res.status(404).json({ message: "Not found" });
+
+  const { allowed, reason } = canAdminTransition(order.status, status);
+  if (!allowed) {
+    return res.status(400).json({ message: reason || "Invalid status change" });
+  }
+
+  if (order.status === status) {
+    return res.json(order);
+  }
+
+  order.status = status;
+
+  const requiresVerification = [
+    "paid",
+    "processing",
+    "shipped",
+    "completed",
+  ].includes(status);
+  if (requiresVerification) {
+    order.paymentDetails = order.paymentDetails || {};
+    order.paymentDetails.verifiedByAdmin = true;
+    order.paymentDetails.verifiedAt =
+      order.paymentDetails.verifiedAt || new Date();
+  }
+
+  await order.save();
 
   // Send status update email (non-blocking)
   try {
-    const statusesToEmail = ["paid", "shipped", "delivered", "cancelled"];
+    const statusesToEmail = [
+      "paid",
+      "processing",
+      "shipped",
+      "completed",
+      "cancelled",
+    ];
     if (statusesToEmail.includes(status) && order.user?.email) {
       await sendStatusUpdate(order, status, order.user.email);
     }
@@ -186,15 +222,37 @@ exports.adminUpdateOrderStatus = async (req, res) => {
 };
 
 exports.adminVerifyTelebirr = async (req, res) => {
-  const order = await Order.findById(req.params.id);
+  const order = await Order.findById(req.params.id).populate("user");
   if (!order) return res.status(404).json({ message: "Not found" });
+  if (isTerminalStatus(order.status)) {
+    return res
+      .status(400)
+      .json({ message: "Locked orders cannot be re-verified" });
+  }
+  const verifiableStatuses = ["pending", "paid", "processing"];
+  if (!verifiableStatuses.includes(order.status)) {
+    return res.status(400).json({
+      message: "Order is already in fulfillment. Verification skipped.",
+    });
+  }
   order.paymentDetails = {
     ...(order.paymentDetails || {}),
     verifiedByAdmin: true,
     verifiedAt: new Date(),
   };
-  order.status = "paid";
+  if (order.status === "pending") {
+    order.status = "paid";
+  }
   await order.save();
+
+  try {
+    if (order.user?.email) {
+      await sendStatusUpdate(order, order.status, order.user.email);
+    }
+  } catch (err) {
+    console.error("Failed to send payment verification email:", err);
+  }
+
   res.json({ message: "Telebirr verified", order });
 };
 
@@ -235,6 +293,9 @@ exports.adminUpdateDisputeStatus = async (req, res) => {
       return res.status(404).json({ message: "Dispute not found" });
     }
 
+    // Store old status for email notification
+    const oldStatus = dispute.status;
+
     if (status) dispute.status = status;
     if (resolution !== undefined) dispute.resolution = resolution;
     if (adminNotes !== undefined) dispute.adminNotes = adminNotes;
@@ -261,6 +322,38 @@ exports.adminUpdateDisputeStatus = async (req, res) => {
     }
 
     await dispute.save();
+
+    // Send email notification to buyer if there's an update
+    try {
+      const hasStatusChange = status && status !== oldStatus;
+      const hasMessage = message && message.trim().length > 0;
+
+      if (hasStatusChange || hasMessage) {
+        const buyer = await User.findById(dispute.buyer).select("email").lean();
+        const order = await Order.findById(dispute.order).lean();
+
+        if (buyer?.email && order) {
+          let updateType = "message";
+          if (hasStatusChange) {
+            if (status === "accepted") updateType = "accepted";
+            else if (status === "rejected") updateType = "rejected";
+            else if (status === "resolved") updateType = "resolved";
+          }
+
+          await sendDisputeUpdate(
+            dispute,
+            order,
+            buyer.email,
+            updateType,
+            hasMessage ? message : undefined
+          );
+        }
+      }
+    } catch (emailErr) {
+      console.error("Failed to send dispute update email:", emailErr);
+      // Don't fail the request if email fails
+    }
+
     res.json(dispute);
   } catch (e) {
     console.error("Update dispute error:", e);
