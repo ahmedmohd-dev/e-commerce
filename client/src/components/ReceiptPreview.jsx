@@ -85,7 +85,7 @@ export default function ReceiptPreview({ order, showQRCode = true }) {
             <div className="col-md-4 d-none d-md-block">
               <div className="text-center">
                 <h6 className="mb-2">Download Receipt QR Code</h6>
-                
+
                 <small className="text-muted mb-2 d-block">
                   🌐 Anyone can scan and download
                 </small>
@@ -131,11 +131,12 @@ const getStatusColor = (status) => {
   switch (status) {
     case "pending":
       return "warning";
-    case "confirmed":
+    case "paid":
+    case "processing":
       return "info";
     case "shipped":
       return "primary";
-    case "delivered":
+    case "completed":
       return "success";
     case "cancelled":
       return "danger";

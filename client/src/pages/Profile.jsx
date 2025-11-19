@@ -30,13 +30,12 @@ const Profile = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "delivered":
       case "completed":
         return "success";
       case "pending":
         return "warning";
-      case "confirmed":
       case "paid":
+      case "processing":
         return "info";
       case "shipped":
         return "primary";
@@ -49,15 +48,14 @@ const Profile = () => {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case "delivered":
       case "completed":
         return "✅";
       case "pending":
         return "⏳";
-      case "confirmed":
-        return "✓";
       case "paid":
         return "💰";
+      case "processing":
+        return "📦";
       case "shipped":
         return "🚚";
       case "cancelled":
@@ -196,13 +194,7 @@ const Profile = () => {
                 <i className="fas fa-check-circle fa-2x"></i>
               </div>
               <h4 className="mb-1">
-                {
-                  orders.filter(
-                    (order) =>
-                      order.status === "completed" ||
-                      order.status === "delivered"
-                  ).length
-                }
+                {orders.filter((order) => order.status === "completed").length}
               </h4>
               <p className="text-muted mb-0">Completed</p>
             </div>
@@ -219,7 +211,7 @@ const Profile = () => {
                   orders.filter(
                     (order) =>
                       order.status === "pending" ||
-                      order.status === "confirmed" ||
+                      order.status === "processing" ||
                       order.status === "paid" ||
                       order.status === "shipped"
                   ).length
@@ -385,7 +377,7 @@ const Profile = () => {
                                 Contact Seller
                               </Link>
                               {order.status !== "completed" &&
-                                order.status !== "delivered" && (
+                                order.status !== "completed" && (
                                   <Link
                                     to={`/disputes/new/${order._id}`}
                                     className="btn btn-sm btn-outline-danger"

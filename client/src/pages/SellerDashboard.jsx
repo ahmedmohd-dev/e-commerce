@@ -12,6 +12,9 @@ import {
   fetchSellerOverview,
   fetchSellerRecentOrders,
   fetchSellerTopProducts,
+  fetchMyContactThreads,
+  fetchContactThread,
+  replyToContactThread,
 } from "../api/sellerApi";
 import { uploadMultipleToCloudinary } from "../utils/cloudinary";
 import http from "../api/http";
@@ -28,7 +31,7 @@ export default function SellerDashboard() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview"); // overview | products | orders
+  const [activeTab, setActiveTab] = useState("overview"); // overview | products | orders | messages
   const [overview, setOverview] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
@@ -59,6 +62,13 @@ export default function SellerDashboard() {
   const [shippingBusy, setShippingBusy] = useState(new Set());
   const [orderStatusBusy, setOrderStatusBusy] = useState(new Set());
   const [showReapply, setShowReapply] = useState(false);
+  const [contactThreads, setContactThreads] = useState([]);
+  const [selectedThread, setSelectedThread] = useState(null);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [replyFiles, setReplyFiles] = useState([]);
+  const [replying, setReplying] = useState(false);
+  const [loadingThreads, setLoadingThreads] = useState(false);
   const formRef = React.useRef(null);
   const canManage = role === "seller" && sellerStatus === "approved";
 
@@ -86,17 +96,59 @@ export default function SellerDashboard() {
           fetchSellerRecentOrders(5),
           fetchSellerTopProducts(5),
         ]);
+        console.log("🔍 [Seller Dashboard] Overview data received:", ov);
+        console.log("🔍 [Seller Dashboard] Totals:", ov?.totals);
+        console.log("🔍 [Seller Dashboard] Products:", ov?.totals?.products);
+        console.log("🔍 [Seller Dashboard] Orders:", ov?.totals?.orders);
+        console.log(
+          "🔍 [Seller Dashboard] Net Revenue:",
+          ov?.totals?.netRevenue
+        );
+        console.log(
+          "🔍 [Seller Dashboard] Gross Revenue:",
+          ov?.totals?.grossRevenue
+        );
+        console.log(
+          "🔍 [Seller Dashboard] Items Shipped:",
+          ov?.totals?.itemsShipped
+        );
+        console.log(
+          "🔍 [Seller Dashboard] Items Pending:",
+          ov?.totals?.itemsPending
+        );
         setOverview(ov);
         setRecentOrders(rec);
         setTopProducts(top);
       } catch (err) {
-        console.error("Failed to load overview:", err);
+        console.error("❌ [Seller Dashboard] Failed to load overview:", err);
+        console.error(
+          "❌ [Seller Dashboard] Error details:",
+          err.response?.data || err.message
+        );
       } finally {
         setOverviewLoading(false);
       }
     }
     loadOverview();
   }, [canManage, activeTab]);
+
+  useEffect(() => {
+    async function loadThreads() {
+      if (!canManage || activeTab !== "messages") return;
+      setLoadingThreads(true);
+      try {
+        const threads = await fetchMyContactThreads();
+        setContactThreads(threads || []);
+      } catch (err) {
+        console.error("Failed to load contact threads:", err);
+      } finally {
+        setLoadingThreads(false);
+      }
+    }
+    loadThreads();
+  }, [canManage, activeTab]);
+
+  // Refresh thread when sending a reply (handled in form submit)
 
   useEffect(() => {
     if (canManage && activeTab === "products") {
@@ -244,23 +296,75 @@ export default function SellerDashboard() {
     });
   };
 
-  const handleVerifyPayment = async (orderId) => {
-    setOrderBusy(orderId, true);
-    try {
-      await updateOrderStatus(orderId, {
-        paymentVerified: true,
-        status: "paid",
-      });
-      await reloadOrders();
-    } catch (err) {
-      console.error("Failed to verify payment:", err);
-      window.alert(
-        err?.response?.data?.message ||
-          "Failed to verify payment. Please try again."
-      );
-    } finally {
-      setOrderBusy(orderId, false);
+  // Payment verification is done by admin only
+
+  const statusBadgeMap = {
+    pending: "bg-secondary text-dark",
+    paid: "bg-info text-dark",
+    processing: "bg-primary",
+    shipped: "bg-primary",
+    completed: "bg-success",
+    cancelled: "bg-danger",
+  };
+
+  const statusHelperText = {
+    pending: "Waiting for admin to verify Telebirr payment.",
+    paid: "Payment verified. Start processing when you are ready.",
+    processing: "You can now prepare and ship this order.",
+    shipped: "In transit. Mark delivered once buyer confirms.",
+    completed: "Delivered. Status is locked.",
+    cancelled: "Order cancelled by admin.",
+  };
+
+  const formatStatusLabel = (status) => {
+    if (!status) return "Pending";
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const getSellerActionState = (order) => {
+    if (!order.paymentDetails?.verifiedByAdmin) {
+      return {
+        message: "Admin must verify payment before you can take action.",
+        icon: "fas fa-lock",
+      };
     }
+    if (order.status === "paid") {
+      return {
+        nextStatus: "processing",
+        label: "Start Processing",
+        icon: "fas fa-play",
+      };
+    }
+    if (order.status === "processing") {
+      return {
+        nextStatus: "shipped",
+        label: "Mark as Shipped",
+        icon: "fas fa-shipping-fast",
+      };
+    }
+    if (order.status === "shipped") {
+      return {
+        nextStatus: "completed",
+        label: "Mark as Delivered",
+        icon: "fas fa-flag-checkered",
+      };
+    }
+    if (order.status === "completed") {
+      return {
+        message: "Order is completed and locked.",
+        icon: "fas fa-lock",
+      };
+    }
+    if (order.status === "cancelled") {
+      return {
+        message: "Order was cancelled by admin.",
+        icon: "fas fa-ban",
+      };
+    }
+    return {
+      message: "Admin controls this status. Please wait.",
+      icon: "fas fa-user-shield",
+    };
   };
 
   const handleUpdateOrderStatus = async (orderId, status) => {
@@ -440,6 +544,7 @@ export default function SellerDashboard() {
           { key: "overview", label: "Overview", icon: "fa-chart-line" },
           { key: "products", label: "Products", icon: "fa-box" },
           { key: "orders", label: "Orders", icon: "fa-file-invoice" },
+          { key: "messages", label: "Messages", icon: "fa-comments" },
         ].map((t) => (
           <li className="nav-item" key={t.key}>
             <button
@@ -474,7 +579,7 @@ export default function SellerDashboard() {
                             Total Products
                           </div>
                           <div className="h4 mb-0">
-                            <CountUp end={overview.totals?.products || 0} />
+                            <CountUp value={overview.totals?.products || 0} />
                           </div>
                         </div>
                         <div className="kpi-icon" style={{ color: "#ff6b35" }}>
@@ -493,7 +598,7 @@ export default function SellerDashboard() {
                             Total Orders
                           </div>
                           <div className="h4 mb-0">
-                            <CountUp end={overview.totals?.orders || 0} />
+                            <CountUp value={overview.totals?.orders || 0} />
                           </div>
                         </div>
                         <div className="kpi-icon" style={{ color: "#ff6b35" }}>
@@ -514,7 +619,7 @@ export default function SellerDashboard() {
                           <div className="h4 mb-0">
                             ETB{" "}
                             <CountUp
-                              end={
+                              value={
                                 overview.totals?.netRevenue ??
                                 overview.totals?.revenue ??
                                 0
@@ -546,7 +651,9 @@ export default function SellerDashboard() {
                             Items Shipped
                           </div>
                           <div className="h4 mb-0">
-                            <CountUp end={overview.totals?.itemsShipped || 0} />
+                            <CountUp
+                              value={overview.totals?.itemsShipped || 0}
+                            />
                           </div>
                           <div className="text-muted small mt-1">
                             {overview.totals?.itemsPending || 0} pending
@@ -829,6 +936,242 @@ export default function SellerDashboard() {
         </div>
       )}
 
+      {activeTab === "messages" && (
+        <div className="row g-4">
+          <div className="col-12 col-lg-4">
+            <div className="card shadow-sm h-100">
+              <div className="card-header bg-white">
+                <strong>Conversations</strong>
+              </div>
+              <div className="card-body p-0">
+                {loadingThreads ? (
+                  <div className="text-center py-4">
+                    <div className="spinner-border text-primary"></div>
+                  </div>
+                ) : contactThreads.length === 0 ? (
+                  <div className="p-3 text-muted text-center">
+                    No messages yet
+                  </div>
+                ) : (
+                  <div className="list-group list-group-flush">
+                    {contactThreads.map((thread) => (
+                      <button
+                        key={thread._id}
+                        className={`list-group-item list-group-item-action ${
+                          selectedThread?._id === thread._id ? "active" : ""
+                        }`}
+                        onClick={() => setSelectedThread(thread)}
+                      >
+                        <div className="d-flex justify-content-between align-items-start">
+                          <div>
+                            <div className="fw-bold">
+                              {thread.buyer?.displayName ||
+                                thread.buyer?.email ||
+                                "Buyer"}
+                            </div>
+                            <small className="text-muted d-block">
+                              Order #{String(thread.order?._id || "").slice(-6)}
+                            </small>
+                            {thread.lastMessage && (
+                              <small className="text-muted d-block mt-1">
+                                {thread.lastMessage.body?.substring(0, 50) ||
+                                  "Attachment"}
+                                ...
+                              </small>
+                            )}
+                          </div>
+                          {thread.unreadCount > 0 && (
+                            <span className="badge bg-primary rounded-pill">
+                              {thread.unreadCount}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="col-12 col-lg-8">
+            <div className="card shadow-sm h-100">
+              <div className="card-header bg-white d-flex justify-content-between">
+                <strong>Messages</strong>
+                {selectedThread && (
+                  <span className="badge bg-light text-dark">
+                    {selectedThread.buyer?.displayName ||
+                      selectedThread.buyer?.email ||
+                      "Buyer"}
+                  </span>
+                )}
+              </div>
+              <div className="card-body d-flex flex-column">
+                {!selectedThread ? (
+                  <div className="text-muted text-center py-5">
+                    Select a conversation to view messages
+                  </div>
+                ) : threadLoading ? (
+                  <div className="text-center py-4">
+                    <div className="spinner-border text-primary"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-3">
+                      <div className="small text-muted mb-2">
+                        Order #
+                        {String(selectedThread.order?._id || "").slice(-8)} •{" "}
+                        {selectedThread.order?.status || "N/A"}
+                      </div>
+                    </div>
+                    <div
+                      className="flex-grow-1 mb-3"
+                      style={{ maxHeight: "400px", overflowY: "auto" }}
+                    >
+                      {selectedThread.messages?.length === 0 ? (
+                        <div className="text-muted text-center py-4">
+                          No messages yet
+                        </div>
+                      ) : (
+                        <div className="list-group">
+                          {selectedThread.messages
+                            ?.sort(
+                              (a, b) =>
+                                new Date(a.createdAt) - new Date(b.createdAt)
+                            )
+                            .map((msg, idx) => (
+                              <div
+                                key={idx}
+                                className={`list-group-item border-0 border-start border-4 ${
+                                  msg.sender === "seller"
+                                    ? "border-success bg-light"
+                                    : "border-primary"
+                                }`}
+                              >
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <span className="fw-bold text-capitalize">
+                                    {msg.sender}
+                                  </span>
+                                  <small className="text-muted">
+                                    {new Date(msg.createdAt).toLocaleString()}
+                                  </small>
+                                </div>
+                                {msg.body && (
+                                  <div className="mt-2">{msg.body}</div>
+                                )}
+                                {msg.attachments?.length > 0 && (
+                                  <div className="mt-2 d-flex flex-wrap gap-2">
+                                    {msg.attachments.map((att, index) => (
+                                      <a
+                                        key={index}
+                                        href={att.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="btn btn-sm btn-outline-primary"
+                                      >
+                                        <i className="fas fa-paperclip me-1"></i>
+                                        Attachment {index + 1}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!replyText.trim() && replyFiles.length === 0) {
+                          window.alert(
+                            "Please provide a message or upload a file"
+                          );
+                          return;
+                        }
+                        setReplying(true);
+                        try {
+                          let attachments = [];
+                          if (replyFiles.length) {
+                            attachments = await uploadMultipleToCloudinary(
+                              replyFiles
+                            );
+                          }
+                          await replyToContactThread(selectedThread._id, {
+                            message: replyText.trim(),
+                            attachments,
+                          });
+                          const updated = await fetchContactThread(
+                            selectedThread._id
+                          );
+                          setSelectedThread(updated);
+                          setReplyText("");
+                          setReplyFiles([]);
+                          // Refresh threads list
+                          const threads = await fetchMyContactThreads();
+                          setContactThreads(threads || []);
+                        } catch (err) {
+                          console.error("Failed to send reply:", err);
+                          window.alert(
+                            err?.response?.data?.message ||
+                              "Failed to send reply. Please try again."
+                          );
+                        } finally {
+                          setReplying(false);
+                        }
+                      }}
+                    >
+                      <div className="mb-3">
+                        <label className="form-label">Reply</label>
+                        <textarea
+                          className="form-control"
+                          rows={3}
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          placeholder="Type your reply here..."
+                        />
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">
+                          Attach file (optional)
+                        </label>
+                        <input
+                          type="file"
+                          className="form-control"
+                          multiple
+                          onChange={(e) =>
+                            setReplyFiles(Array.from(e.target.files || []))
+                          }
+                        />
+                        {replyFiles.length > 0 && (
+                          <div className="form-text">
+                            {replyFiles.length} file
+                            {replyFiles.length > 1 ? "s" : ""} selected
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={replying}
+                      >
+                        {replying ? (
+                          <span className="spinner-border spinner-border-sm"></span>
+                        ) : (
+                          <>
+                            <i className="fas fa-paper-plane me-1"></i>
+                            Send Reply
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === "products" && (
         <div className="row">
           {items.map((p) => (
@@ -898,6 +1241,15 @@ export default function SellerDashboard() {
       {activeTab === "orders" && (
         <div className="card border-0 shadow-sm">
           <div className="card-body">
+            <div className="alert alert-info small d-flex gap-3 align-items-start">
+              <i className="fas fa-shield-alt mt-1"></i>
+              <div>
+                <strong>Order timeline:</strong>
+                <div>1) Pending → Admin verifies Telebirr</div>
+                <div>2) Paid → Admin releases order (Processing)</div>
+                <div>3) You update: Processing → Shipped → Completed</div>
+              </div>
+            </div>
             {orders.items.length === 0 ? (
               <div className="text-muted">No orders found.</div>
             ) : (
@@ -908,9 +1260,10 @@ export default function SellerDashboard() {
                       <th style={{ width: "30px" }}></th>
                       <th>Order</th>
                       <th>Customer</th>
-                      <th>Subtotal (Your items)</th>
-                      <th>Net Earnings</th>
-                      <th>Order Status</th>
+                      <th>Amount</th>
+                      <th>Telebirr Txn</th>
+                      <th>Verify</th>
+                      <th>Status</th>
                       <th>Date</th>
                       <th style={{ width: "220px" }}>Actions</th>
                     </tr>
@@ -919,9 +1272,8 @@ export default function SellerDashboard() {
                     {orders.items.map((o) => {
                       const isExpanded = expandedOrders.has(o._id);
                       const isOrderBusy = orderStatusBusy.has(o._id);
-                      const isPaid =
-                        o.status === "paid" ||
-                        o.paymentDetails?.verifiedBySeller;
+                      const isPaymentVerified =
+                        o.paymentDetails?.verifiedByAdmin;
                       return (
                         <React.Fragment key={o._id}>
                           <tr
@@ -940,50 +1292,51 @@ export default function SellerDashboard() {
                             </td>
                             <td>{o.user?.email || "-"}</td>
                             <td>
-                              ETB {Number(o.subtotal || 0).toLocaleString()}
-                            </td>
-                            <td>
                               ETB{" "}
                               {Number(
-                                o.net ?? o.subtotal ?? 0
+                                o.subtotal ?? o.total ?? o.amount ?? 0
                               ).toLocaleString()}
                             </td>
                             <td>
-                              <span className="badge badge-orange text-uppercase">
-                                {o.status}
-                              </span>
-                              {o.paymentDetails?.verifiedBySeller && (
-                                <div className="small text-success mt-1">
-                                  <i className="fas fa-check-circle me-1"></i>
-                                  Payment verified
-                                </div>
+                              {o.paymentDetails?.transactionId || (
+                                <span className="text-muted">-</span>
                               )}
+                            </td>
+                            <td>
+                              {o.paymentDetails?.verifiedByAdmin ? (
+                                <span className="badge bg-success">
+                                  <i className="fas fa-check me-1"></i> Verified
+                                </span>
+                              ) : (
+                                <span className="badge bg-warning text-dark">
+                                  <i className="fas fa-clock me-1"></i> Pending
+                                  Admin
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              <div className="d-flex flex-column">
+                                <span
+                                  className={`badge ${
+                                    statusBadgeMap[o.status] || "bg-secondary"
+                                  } align-self-start`}
+                                >
+                                  {formatStatusLabel(o.status)}
+                                </span>
+                                <small className="text-muted mt-1">
+                                  <i className="fas fa-info-circle me-1"></i>
+                                  {statusHelperText[o.status] ||
+                                    "Status managed by admin."}
+                                </small>
+                              </div>
                             </td>
                             <td>
                               {new Date(o.createdAt).toLocaleDateString()}
                             </td>
                             <td>
-                              <div className="d-flex gap-2 flex-wrap">
-                                {!isPaid && (
-                                  <button
-                                    className="btn btn-sm btn-outline-success"
-                                    disabled={isOrderBusy}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleVerifyPayment(o._id);
-                                    }}
-                                  >
-                                    {isOrderBusy ? (
-                                      <span className="spinner-border spinner-border-sm"></span>
-                                    ) : (
-                                      <>
-                                        <i className="fas fa-check me-1"></i>
-                                        Verify Payment
-                                      </>
-                                    )}
-                                  </button>
-                                )}
-                                {o.status !== "completed" && (
+                              {(() => {
+                                const actionState = getSellerActionState(o);
+                                return actionState.nextStatus ? (
                                   <button
                                     className="btn btn-sm btn-outline-primary"
                                     disabled={isOrderBusy}
@@ -991,7 +1344,7 @@ export default function SellerDashboard() {
                                       e.stopPropagation();
                                       handleUpdateOrderStatus(
                                         o._id,
-                                        "completed"
+                                        actionState.nextStatus
                                       );
                                     }}
                                   >
@@ -999,18 +1352,31 @@ export default function SellerDashboard() {
                                       <span className="spinner-border spinner-border-sm"></span>
                                     ) : (
                                       <>
-                                        <i className="fas fa-flag-checkered me-1"></i>
-                                        Mark Completed
+                                        {actionState.icon && (
+                                          <i
+                                            className={`${actionState.icon} me-1`}
+                                          ></i>
+                                        )}
+                                        {actionState.label}
                                       </>
                                     )}
                                   </button>
-                                )}
-                              </div>
+                                ) : (
+                                  <small className="text-muted">
+                                    {actionState.icon && (
+                                      <i
+                                        className={`${actionState.icon} me-1`}
+                                      ></i>
+                                    )}
+                                    {actionState.message}
+                                  </small>
+                                );
+                              })()}
                             </td>
                           </tr>
                           {isExpanded && (
                             <tr>
-                              <td colSpan={8} className="p-0">
+                              <td colSpan={9} className="p-0">
                                 <div className="p-3 bg-light">
                                   <h6 className="mb-3">
                                     Your Items in This Order

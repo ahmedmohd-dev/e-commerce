@@ -39,6 +39,34 @@ export default function AdminDashboard() {
   const [disputes, setDisputes] = useState([]);
   const [disputeFilter, setDisputeFilter] = useState("open"); // open|accepted|rejected|resolved|all
 
+  const adminStatusOptions = [
+    "pending",
+    "paid",
+    "processing",
+    "shipped",
+    "completed",
+    "cancelled",
+  ];
+
+  const statusOrderIndex = (status) =>
+    adminStatusOptions.indexOf(status ?? "pending");
+
+  const isOrderLocked = (status) =>
+    status === "completed" || status === "cancelled";
+
+  const isAdminOptionDisabled = (current, option) => {
+    if (option === current) return false;
+    if (isOrderLocked(current)) return true;
+    if (option === "cancelled" && current === "completed") return true;
+    const currentIndex = statusOrderIndex(current);
+    const optionIndex = statusOrderIndex(option);
+    if (optionIndex === -1) return true;
+    return optionIndex < currentIndex;
+  };
+
+  const formatStatusLabel = (status) =>
+    status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pending";
+
   useEffect(() => {
     let mounted = true;
     async function load() {
@@ -222,10 +250,21 @@ export default function AdminDashboard() {
 
     const calcTrend = (series) => {
       if (!Array.isArray(series) || series.length < 2) return 0;
-      const first = series[0] || 0;
-      const last = series[series.length - 1] || 0;
-      const denom = first === 0 ? 1 : first;
-      return ((last - first) / denom) * 100;
+      const first = Number(series[0] || 0);
+      const last = Number(series[series.length - 1] || 0);
+
+      // If first value is 0 or very small, handle differently
+      if (first === 0 || first < 0.01) {
+        // If we went from 0 to a value, show 100% increase
+        // If we went from 0 to 0, show 0%
+        return last > 0 ? 100 : 0;
+      }
+
+      // Normal percentage calculation: ((new - old) / old) * 100
+      const change = ((last - first) / first) * 100;
+
+      // Cap at reasonable maximum (e.g., 10000% = 100x increase)
+      return Math.min(change, 10000);
     };
 
     const trends = {
@@ -920,7 +959,7 @@ export default function AdminDashboard() {
                       </td>
                       <td>{o.paymentDetails?.transactionId || "-"}</td>
                       <td>
-                        {o.status === "paid" || o.paymentDetails?.verified ? (
+                        {o.paymentDetails?.verifiedByAdmin ? (
                           <span className="badge bg-success">
                             <i className="fas fa-check me-1"></i> Verified
                           </span>
@@ -934,19 +973,15 @@ export default function AdminDashboard() {
                             onClick={async () => {
                               try {
                                 setVerifyBusy((ids) => [...ids, o._id]);
-                                const updated = await verifyTelebirr(o._id);
+                                const response = await verifyTelebirr(o._id);
+                                const updatedOrder =
+                                  response?.order || response;
                                 setOrders((list) =>
-                                  list.map((x) => {
-                                    if (x._id !== o._id) return x;
-                                    const merged = { ...x, ...updated };
-                                    merged.status = "paid";
-                                    merged.paymentDetails = {
-                                      ...(x.paymentDetails || {}),
-                                      ...(updated?.paymentDetails || {}),
-                                      verified: true,
-                                    };
-                                    return merged;
-                                  })
+                                  list.map((x) =>
+                                    x._id === o._id
+                                      ? { ...x, ...updatedOrder }
+                                      : x
+                                  )
                                 );
                               } catch (e) {
                                 console.error("Telebirr verify failed", e);
@@ -982,29 +1017,30 @@ export default function AdminDashboard() {
                           value={o.status}
                           onChange={async (e) => {
                             const next = e.target.value;
+                            if (
+                              next === o.status ||
+                              isAdminOptionDisabled(o.status, next)
+                            ) {
+                              return;
+                            }
                             const updated = await updateOrderStatus(
                               o._id,
                               next
                             );
                             setOrders((list) =>
                               list.map((x) =>
-                                x._id === o._id
-                                  ? { ...x, status: updated.status }
-                                  : x
+                                x._id === o._id ? { ...x, ...updated } : x
                               )
                             );
                           }}
                         >
-                          {[
-                            "pending",
-                            "confirmed",
-                            "paid",
-                            "shipped",
-                            "delivered",
-                            "cancelled",
-                          ].map((s) => (
-                            <option key={s} value={s}>
-                              {s.charAt(0).toUpperCase() + s.slice(1)}
+                          {adminStatusOptions.map((s) => (
+                            <option
+                              key={s}
+                              value={s}
+                              disabled={isAdminOptionDisabled(o.status, s)}
+                            >
+                              {formatStatusLabel(s)}
                             </option>
                           ))}
                         </select>

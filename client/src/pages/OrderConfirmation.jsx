@@ -81,11 +81,12 @@ export default function OrderConfirmation() {
     switch (status) {
       case "pending":
         return "warning";
-      case "confirmed":
+      case "paid":
+      case "processing":
         return "info";
       case "shipped":
         return "primary";
-      case "delivered":
+      case "completed":
         return "success";
       case "cancelled":
         return "danger";
@@ -98,11 +99,13 @@ export default function OrderConfirmation() {
     switch (status) {
       case "pending":
         return "fa-clock";
-      case "confirmed":
-        return "fa-check-circle";
+      case "paid":
+        return "fa-money-bill";
+      case "processing":
+        return "fa-box-open";
       case "shipped":
         return "fa-shipping-fast";
-      case "delivered":
+      case "completed":
         return "fa-check-double";
       case "cancelled":
         return "fa-times-circle";

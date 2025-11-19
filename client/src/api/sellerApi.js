@@ -76,3 +76,22 @@ export async function fetchSellerTopProducts(limit = 5) {
   );
   return data;
 }
+
+// Seller contact threads
+export async function fetchMyContactThreads() {
+  const { data } = await http.get("/api/seller/contact/threads");
+  return data;
+}
+
+export async function fetchContactThread(threadId) {
+  const { data } = await http.get(`/api/seller/contact/threads/${threadId}`);
+  return data;
+}
+
+export async function replyToContactThread(threadId, payload) {
+  const { data } = await http.post(
+    `/api/seller/contact/threads/${threadId}/reply`,
+    payload
+  );
+  return data;
+}

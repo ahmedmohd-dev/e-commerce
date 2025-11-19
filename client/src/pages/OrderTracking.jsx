@@ -57,11 +57,11 @@ export default function OrderTracking() {
   }
 
   const statusSteps = [
-    { key: "pending", label: "Order Placed", icon: "fa-shopping-cart" },
-    { key: "confirmed", label: "Confirmed", icon: "fa-check-circle" },
-    { key: "paid", label: "Payment Received", icon: "fa-money-bill" },
+    { key: "pending", label: "Pending", icon: "fa-shopping-cart" },
+    { key: "paid", label: "Payment Verified", icon: "fa-money-bill" },
+    { key: "processing", label: "Processing", icon: "fa-box-open" },
     { key: "shipped", label: "Shipped", icon: "fa-shipping-fast" },
-    { key: "delivered", label: "Delivered", icon: "fa-check-double" },
+    { key: "completed", label: "Completed", icon: "fa-check-double" },
   ];
 
   const cancelledSteps = [
@@ -84,12 +84,12 @@ export default function OrderTracking() {
     switch (status) {
       case "pending":
         return "warning";
-      case "confirmed":
       case "paid":
+      case "processing":
         return "info";
       case "shipped":
         return "primary";
-      case "delivered":
+      case "completed":
         return "success";
       case "cancelled":
         return "danger";
@@ -353,19 +353,3 @@ export default function OrderTracking() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
