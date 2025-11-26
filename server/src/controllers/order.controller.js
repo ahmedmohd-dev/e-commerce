@@ -7,6 +7,12 @@ const {
   sendOrderConfirmation,
   sendDisputeCreated,
 } = require("../utils/emailService");
+const {
+  notifyAdmins,
+  notifyUser,
+  notifyUsers,
+  extractSellerIdsFromOrder,
+} = require("../services/notification.service");
 
 exports.createOrder = async (req, res) => {
   try {
@@ -110,6 +116,67 @@ exports.createOrder = async (req, res) => {
       console.error("Failed to send confirmation email:", emailError);
       // Don't fail the order creation if email fails
     }
+
+    const sellerIds = Array.from(
+      new Set(
+        normalizedItems
+          .map((item) => item.seller)
+          .filter((sellerId) => !!sellerId)
+          .map((id) => id.toString())
+      )
+    );
+
+    const notificationTasks = [];
+
+    notificationTasks.push(
+      notifyUser(req.user._id, {
+        type: "order:placed",
+        title: "Order placed successfully",
+        body: `We received your order #${order._id.toString()}. We'll notify you as it moves forward.`,
+        link: `/order-tracking/${order._id}`,
+        icon: "shopping-bag",
+        severity: "success",
+        meta: { orderId: order._id, status: order.status },
+      })
+    );
+
+    if (sellerIds.length) {
+      notificationTasks.push(
+        notifyUsers(sellerIds, {
+          type: "order:new",
+          title: "New order received",
+          body: `Order #${order._id.toString()} includes your products.`,
+          link: `/seller?tab=orders&order=${order._id}`,
+          icon: "box",
+          severity: "info",
+          meta: {
+            orderId: order._id,
+            status: order.status,
+            total: order.total,
+          },
+        })
+      );
+    }
+
+    notificationTasks.push(
+      notifyAdmins({
+        type: "order:pending",
+        title: "Order awaiting verification",
+        body: `Order #${order._id.toString()} requires review.`,
+        link: `/admin/dashboard?order=${order._id}`,
+        icon: "clipboard-check",
+        severity: "warning",
+        meta: {
+          orderId: order._id,
+          paymentMethod: order.paymentMethod,
+          total: order.total,
+        },
+      })
+    );
+
+    Promise.all(notificationTasks).catch((err) =>
+      console.error("Create order notification error:", err)
+    );
 
     res.status(201).json(order);
   } catch (err) {
@@ -258,6 +325,61 @@ exports.createOrderDispute = async (req, res) => {
       // Don't fail the request if email fails
     }
 
+    const disputeLink = `/disputes?order=${orderId}`;
+    const notificationJobs = [];
+
+    if (sellerIds.length) {
+      notificationJobs.push(
+        notifyUsers(sellerIds, {
+          type: "dispute:new",
+          title: "New dispute opened",
+          body: `Order #${orderId} now has an open dispute.`,
+          link: `/seller?tab=disputes&order=${orderId}`,
+          icon: "exclamation-circle",
+          severity: "warning",
+          meta: {
+            disputeId: dispute._id,
+            orderId,
+            reason,
+          },
+        })
+      );
+    }
+
+    notificationJobs.push(
+      notifyAdmins({
+        type: "dispute:new",
+        title: "New dispute submitted",
+        body: `Buyer ${
+          req.user.email || req.user._id
+        } filed a dispute for order #${orderId}.`,
+        link: `/admin/dashboard?tab=disputes`,
+        icon: "life-ring",
+        severity: "danger",
+        meta: {
+          disputeId: dispute._id,
+          orderId,
+          buyerId: req.user._id,
+        },
+      })
+    );
+
+    notificationJobs.push(
+      notifyUser(req.user._id, {
+        type: "dispute:created",
+        title: "Dispute submitted",
+        body: "We received your dispute. We'll keep you posted here.",
+        link: disputeLink,
+        icon: "life-ring",
+        severity: "info",
+        meta: { disputeId: dispute._id, orderId },
+      })
+    );
+
+    Promise.all(notificationJobs).catch((err) =>
+      console.error("Dispute notification error:", err)
+    );
+
     res.status(201).json(dispute);
   } catch (err) {
     console.error("Create dispute error:", err);
@@ -356,6 +478,48 @@ exports.addDisputeMessage = async (req, res) => {
     await dispute.save();
 
     await dispute.populate("messages.attachments.uploadedBy", "email");
+
+    const order = await Order.findById(dispute.order)
+      .select("items user")
+      .lean();
+    const sellerIds = extractSellerIdsFromOrder(order);
+    const notifyJobs = [];
+
+    if (sellerIds.length) {
+      notifyJobs.push(
+        notifyUsers(sellerIds, {
+          type: "dispute:buyer-message",
+          title: "Buyer responded on dispute",
+          body: "A buyer replied to an open dispute that involves your products.",
+          link: `/seller?tab=disputes&order=${dispute.order}`,
+          icon: "comment-dots",
+          severity: "info",
+          meta: {
+            disputeId: dispute._id,
+            orderId: dispute.order,
+          },
+        })
+      );
+    }
+
+    notifyJobs.push(
+      notifyAdmins({
+        type: "dispute:buyer-message",
+        title: "Buyer added more info",
+        body: `Dispute #${dispute._id} has a new buyer message.`,
+        link: `/admin/dashboard?tab=disputes`,
+        icon: "inbox",
+        severity: "info",
+        meta: {
+          disputeId: dispute._id,
+          orderId: dispute.order,
+        },
+      })
+    );
+
+    Promise.all(notifyJobs).catch((err) =>
+      console.error("Dispute message notification error:", err)
+    );
 
     res.json(dispute);
   } catch (err) {

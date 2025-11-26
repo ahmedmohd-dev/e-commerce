@@ -2,6 +2,7 @@ const Order = require("../models/Order");
 const ContactThread = require("../models/ContactThread");
 const User = require("../models/User");
 const mongoose = require("mongoose");
+const { notifyUser } = require("../services/notification.service");
 
 const buildAttachmentDocs = (urls = [], userId) =>
   (urls || [])
@@ -209,6 +210,18 @@ exports.postContactMessage = async (req, res) => {
     });
     await thread.save();
     await thread.populate("seller", "email sellerProfile.shopName");
+
+    notifyUser(sellerId, {
+      type: "contact:buyer-message",
+      title: "New buyer message",
+      body: `Buyer sent a message about order #${orderId}.`,
+      link: `/seller?tab=messages&thread=${thread._id}`,
+      icon: "comments",
+      severity: "info",
+      meta: { threadId: thread._id, orderId },
+    }).catch((err) =>
+      console.error("Contact notification error (seller)", err)
+    );
 
     res.json(thread);
   } catch (err) {

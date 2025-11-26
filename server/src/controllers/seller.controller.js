@@ -5,6 +5,12 @@ const ContactThread = require("../models/ContactThread");
 const mongoose = require("mongoose");
 const { sendStatusUpdate } = require("../utils/emailService");
 const { canSellerTransition } = require("../utils/orderStatusRules");
+const {
+  notifyAdmins,
+  notifyUser,
+  notifyUsers,
+  extractSellerIdsFromOrder,
+} = require("../services/notification.service");
 
 exports.applyForSeller = async (req, res) => {
   try {
@@ -20,6 +26,17 @@ exports.applyForSeller = async (req, res) => {
         },
       },
       { new: true }
+    );
+    notifyAdmins({
+      type: "seller:application",
+      title: "New seller application",
+      body: `${user.email || "A buyer"} applied to become a seller.`,
+      link: `/admin/dashboard?tab=sellers`,
+      icon: "store",
+      severity: "info",
+      meta: { applicantId: user._id },
+    }).catch((err) =>
+      console.error("Seller application notification error:", err)
     );
     return res.json(user);
   } catch (e) {
@@ -269,6 +286,32 @@ exports.sellerUpdateOrderStatus = async (req, res) => {
     } catch (emailErr) {
       console.error("Failed to send order status email:", emailErr);
     }
+
+    notifyUser(order.user?._id, {
+      type: "order:status",
+      title: `Order updated to ${status}`,
+      body: `Your order #${order._id.toString()} is now ${status}.`,
+      link: `/order-tracking/${order._id}`,
+      icon: "truck",
+      severity: "info",
+      meta: { orderId: order._id, status },
+    }).catch((err) =>
+      console.error("Buyer order status notification error:", err)
+    );
+
+    notifyAdmins({
+      type: "order:seller-progress",
+      title: "Seller updated an order",
+      body: `Seller ${
+        req.user._id
+      } changed order #${order._id.toString()} to ${status}.`,
+      link: `/admin/dashboard?order=${order._id}`,
+      icon: "route",
+      severity: "info",
+      meta: { orderId: order._id, status, sellerId: req.user._id },
+    }).catch((err) =>
+      console.error("Admin order update notification error:", err)
+    );
 
     return res.json({ success: true, order });
   } catch (error) {
@@ -742,6 +785,19 @@ exports.replyToContactThread = async (req, res) => {
 
     await thread.populate("buyer", "email displayName");
     await thread.populate("order", "status total totalPrice createdAt");
+
+    notifyUser(thread.buyer, {
+      type: "contact:seller-message",
+      title: "Seller replied",
+      body: "The seller responded to your question.",
+      link: `/orders/${thread.order}?tab=contact&thread=${thread._id}`,
+      icon: "comments",
+      severity: "info",
+      meta: {
+        threadId: thread._id,
+        orderId: thread.order?._id || thread.order,
+      },
+    }).catch((err) => console.error("Contact notification error (buyer)", err));
 
     res.json(thread);
   } catch (err) {

@@ -4,3 +4,9 @@ when the admin touches verify it will be changed in the user the pending to paid
 for dispute all things email wede buyer yelekal
 le eyandandu update email yelekal
 status changing lay admin yeqeyerewen seller meqeyere ayechelem
+The current UI leans more toward a desktop-first (PC-first) layout. While some components are responsive, the overall spacing and typography were designed with desktop dashboards in mind. If you’d like, I can help transition it toward a more mobile-first approach as we refresh the styling.
+) More Notification Types / Events
+Infrastructure was already generic (each notification has type, title, body, link, meta), so I wired more key events:
+Orders:
+Buyer gets order:placed, order:status, order:verified.
+Seller gets order:new, order:status-admin, order:verified, order:seller-progress.

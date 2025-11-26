@@ -18,6 +18,7 @@ const adminUtilRoutes = require("./routes/admin.util.routes");
 const receiptRoutes = require("./routes/receipt.routes");
 const reviewRoutes = require("./routes/review.routes");
 const contactRoutes = require("./routes/contact.routes");
+const notificationRoutes = require("./routes/notification.routes");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -63,6 +64,7 @@ app.use("/api/_util", adminUtilRoutes);
 app.use("/api/receipt", receiptRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/notifications", notificationRoutes);
 // end routes
 
 app.get("/api/health", (req, res) => {

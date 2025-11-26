@@ -11,6 +11,12 @@ const {
   canAdminTransition,
   isTerminalStatus,
 } = require("../utils/orderStatusRules");
+const {
+  notifyUser,
+  notifyUsers,
+  notifyAdmins,
+  extractSellerIdsFromOrder,
+} = require("../services/notification.service");
 
 exports.listSellers = async (req, res) => {
   try {
@@ -58,6 +64,21 @@ exports.updateSellerStatus = async (req, res) => {
         // Don't fail the request if email fails
       }
     }
+
+    notifyUser(user._id, {
+      type: "seller:status",
+      title: `Seller application ${status}`,
+      body:
+        status === "approved"
+          ? "Congratulations! You can now access the seller center."
+          : status === "rejected"
+          ? "Your seller application was rejected. Please review admin feedback."
+          : "Your seller application is under review.",
+      link: status === "approved" ? "/seller" : "/profile",
+      icon: "store",
+      severity: status === "approved" ? "success" : "warning",
+      meta: { status },
+    }).catch((err) => console.error("Seller status notification error:", err));
 
     return res.json(user);
   } catch (e) {
@@ -218,6 +239,33 @@ exports.adminUpdateOrderStatus = async (req, res) => {
     // Don't fail the status update if email fails
   }
 
+  notifyUser(order.user?._id, {
+    type: "order:status",
+    title: `Order moved to ${status}`,
+    body: `Your order #${order._id.toString()} is now ${status}.`,
+    link: `/order-tracking/${order._id}`,
+    icon: "truck",
+    severity: status === "completed" ? "success" : "info",
+    meta: { orderId: order._id, status },
+  }).catch((err) =>
+    console.error("Buyer notification error (admin status)", err)
+  );
+
+  const sellerIds = extractSellerIdsFromOrder(order);
+  if (sellerIds.length) {
+    notifyUsers(sellerIds, {
+      type: "order:status-admin",
+      title: `Order ${order._id.toString()} updated`,
+      body: `Admin moved this order to ${status}.`,
+      link: `/seller?tab=orders&order=${order._id}`,
+      icon: "route",
+      severity: "info",
+      meta: { orderId: order._id, status },
+    }).catch((err) =>
+      console.error("Seller notification error (admin status)", err)
+    );
+  }
+
   res.json(order);
 };
 
@@ -251,6 +299,33 @@ exports.adminVerifyTelebirr = async (req, res) => {
     }
   } catch (err) {
     console.error("Failed to send payment verification email:", err);
+  }
+
+  notifyUser(order.user?._id, {
+    type: "order:verified",
+    title: "Payment verified",
+    body: `Your order #${order._id.toString()} was verified by admin.`,
+    link: `/order-tracking/${order._id}`,
+    icon: "badge-check",
+    severity: "success",
+    meta: { orderId: order._id },
+  }).catch((error) =>
+    console.error("Buyer notification error (telebirr)", error)
+  );
+
+  const sellerIds = extractSellerIdsFromOrder(order);
+  if (sellerIds.length) {
+    notifyUsers(sellerIds, {
+      type: "order:verified",
+      title: "Order cleared to process",
+      body: `Order #${order._id.toString()} is now verified. You can proceed.`,
+      link: `/seller?tab=orders&order=${order._id}`,
+      icon: "clipboard-check",
+      severity: "success",
+      meta: { orderId: order._id },
+    }).catch((error) =>
+      console.error("Seller notification error (telebirr)", error)
+    );
   }
 
   res.json({ message: "Telebirr verified", order });
@@ -323,16 +398,21 @@ exports.adminUpdateDisputeStatus = async (req, res) => {
 
     await dispute.save();
 
+    const order = await Order.findById(dispute.order)
+      .select("items user")
+      .lean();
+    const sellerIds = extractSellerIdsFromOrder(order);
+
+    const hasStatusChange = status && status !== oldStatus;
+    const hasMessage = message && message.trim().length > 0;
+
     // Send email notification to buyer if there's an update
     try {
-      const hasStatusChange = status && status !== oldStatus;
-      const hasMessage = message && message.trim().length > 0;
-
       if (hasStatusChange || hasMessage) {
         const buyer = await User.findById(dispute.buyer).select("email").lean();
-        const order = await Order.findById(dispute.order).lean();
+        const orderForEmail = await Order.findById(dispute.order).lean();
 
-        if (buyer?.email && order) {
+        if (buyer?.email && orderForEmail) {
           let updateType = "message";
           if (hasStatusChange) {
             if (status === "accepted") updateType = "accepted";
@@ -342,7 +422,7 @@ exports.adminUpdateDisputeStatus = async (req, res) => {
 
           await sendDisputeUpdate(
             dispute,
-            order,
+            orderForEmail,
             buyer.email,
             updateType,
             hasMessage ? message : undefined
@@ -352,6 +432,36 @@ exports.adminUpdateDisputeStatus = async (req, res) => {
     } catch (emailErr) {
       console.error("Failed to send dispute update email:", emailErr);
       // Don't fail the request if email fails
+    }
+
+    notifyUser(dispute.buyer, {
+      type: "dispute:update",
+      title: hasStatusChange
+        ? `Dispute ${status || "updated"}`
+        : "New dispute message",
+      body: hasStatusChange
+        ? `Admin updated your dispute to ${status}.`
+        : "Admin replied to your dispute.",
+      link: `/disputes?order=${dispute.order}`,
+      icon: "life-ring",
+      severity: hasStatusChange ? "info" : "warning",
+      meta: { disputeId: dispute._id, orderId: dispute.order, status },
+    }).catch((err) => console.error("Buyer dispute notification error:", err));
+
+    if (sellerIds.length) {
+      notifyUsers(sellerIds, {
+        type: "dispute:update",
+        title: "Dispute updated",
+        body: hasStatusChange
+          ? `Admin set dispute to ${status}.`
+          : "Admin added a message to the dispute.",
+        link: `/seller?tab=disputes&order=${dispute.order}`,
+        icon: "balance-scale",
+        severity: "warning",
+        meta: { disputeId: dispute._id, orderId: dispute.order, status },
+      }).catch((err) =>
+        console.error("Seller dispute notification error:", err)
+      );
     }
 
     res.json(dispute);

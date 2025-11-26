@@ -1,5 +1,11 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import Home from "../pages/Home";
 import Products from "../pages/Products";
 import ProductDetails from "../pages/ProductDetails";
@@ -26,6 +32,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { CartProvider } from "../contexts/CartContext";
 import { FavoritesProvider } from "../contexts/FavoritesContext";
 import { AuthProvider } from "../contexts/AuthContext";
+import { NotificationProvider } from "../contexts/NotificationContext";
+import { ThemeProvider } from "../contexts/ThemeContext";
 
 function ProtectedRoute({ children }) {
   const [ready, setReady] = useState(false);
@@ -41,123 +49,136 @@ function ProtectedRoute({ children }) {
   return user ? children : <Navigate to="/login" replace />;
 }
 
+function ConditionalNavbar() {
+  const location = useLocation();
+  const hideNavbar =
+    location.pathname === "/login" || location.pathname === "/register";
+
+  if (hideNavbar) return null;
+  return <Navbar />;
+}
+
 export default function AppRouter() {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <FavoritesProvider>
-          <BrowserRouter>
-            <Navbar />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/product/:slug" element={<ProductDetails />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route
-                path="/checkout"
-                element={
-                  <ProtectedRoute>
-                    <Checkout />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/favorites" element={<Favorites />} />
-              <Route
-                path="/order-confirmation/:orderId"
-                element={
-                  <ProtectedRoute>
-                    <OrderConfirmation />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/order-tracking/:orderId"
-                element={
-                  <ProtectedRoute>
-                    <OrderTracking />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/qr-scanner" element={<QRScanner />} />
-              <Route
-                path="/seller"
-                element={
-                  <ProtectedRoute>
-                    <SellerDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/products"
-                element={
-                  <ProtectedRoute>
-                    <AdminProducts />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/categories"
-                element={
-                  <ProtectedRoute>
-                    <AdminCategories />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/brands"
-                element={
-                  <ProtectedRoute>
-                    <AdminBrands />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/disputes"
-                element={
-                  <ProtectedRoute>
-                    <DisputePage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/disputes/new/:orderId"
-                element={
-                  <ProtectedRoute>
-                    <DisputePage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/orders/:orderId/contact"
-                element={
-                  <ProtectedRoute>
-                    <ContactSellerPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
-        </FavoritesProvider>
-      </CartProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <CartProvider>
+          <FavoritesProvider>
+            <NotificationProvider>
+              <BrowserRouter>
+                <ConditionalNavbar />
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/product/:slug" element={<ProductDetails />} />
+                  <Route path="/cart" element={<Cart />} />
+                  <Route
+                    path="/checkout"
+                    element={
+                      <ProtectedRoute>
+                        <Checkout />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/favorites" element={<Favorites />} />
+                  <Route
+                    path="/order-confirmation/:orderId"
+                    element={
+                      <ProtectedRoute>
+                        <OrderConfirmation />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/order-tracking/:orderId"
+                    element={
+                      <ProtectedRoute>
+                        <OrderTracking />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/qr-scanner" element={<QRScanner />} />
+                  <Route
+                    path="/seller"
+                    element={
+                      <ProtectedRoute>
+                        <SellerDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/products"
+                    element={
+                      <ProtectedRoute>
+                        <AdminProducts />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/categories"
+                    element={
+                      <ProtectedRoute>
+                        <AdminCategories />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/brands"
+                    element={
+                      <ProtectedRoute>
+                        <AdminBrands />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/profile"
+                    element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/disputes"
+                    element={
+                      <ProtectedRoute>
+                        <DisputePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/disputes/new/:orderId"
+                    element={
+                      <ProtectedRoute>
+                        <DisputePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/orders/:orderId/contact"
+                    element={
+                      <ProtectedRoute>
+                        <ContactSellerPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </BrowserRouter>
+            </NotificationProvider>
+          </FavoritesProvider>
+        </CartProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

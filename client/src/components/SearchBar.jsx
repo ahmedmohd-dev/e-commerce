@@ -2,7 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { searchAutocomplete } from "../api/productApi";
 
-export default function SearchBar() {
+export default function SearchBar({
+  placeholder = "Search products...",
+  maxWidth = 560,
+  className = "",
+}) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -80,17 +84,25 @@ export default function SearchBar() {
     ));
   };
 
+  const wrapperStyle = {
+    width: "100%",
+  };
+  if (maxWidth !== null) {
+    wrapperStyle.maxWidth =
+      typeof maxWidth === "number" ? `${maxWidth}px` : maxWidth;
+  }
+
   return (
     <div
-      className="position-relative flex-grow-1 mx-3"
-      style={{ maxWidth: "500px" }}
+      className={`position-relative flex-grow-1 ${className}`.trim()}
+      style={wrapperStyle}
     >
       <form onSubmit={handleSubmit} ref={searchRef}>
         <div className="input-group">
           <input
             type="text"
             className="form-control"
-            placeholder="Search products..."
+            placeholder={placeholder}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => {
@@ -175,19 +187,3 @@ export default function SearchBar() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
