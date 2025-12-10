@@ -10,6 +10,8 @@ const orderItemSchema = new mongoose.Schema({
   price: Number,
   quantity: Number,
   image: String,
+  category: String,
+  brand: String,
   shippingStatus: {
     type: String,
     enum: ["pending", "shipped", "delivered"],

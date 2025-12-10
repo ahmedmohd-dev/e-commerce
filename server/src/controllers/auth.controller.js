@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const { sendWelcomeEmail } = require("../utils/emailService");
 
 exports.getProfile = async (req, res) => {
   if (!req.user) return res.status(401).json({ message: "Unauthenticated" });
@@ -26,6 +27,7 @@ exports.register = async (req, res) => {
 
     // Check if user already exists
     const existingUser = await User.findOne({ firebaseUid });
+
     if (existingUser) {
       // If user exists but doesn't have seller profile and they're registering as seller, update it
       if (
@@ -77,6 +79,12 @@ exports.register = async (req, res) => {
     }
 
     const user = await User.create(userData);
+
+    // Send welcome email (don't wait for it to complete)
+    sendWelcomeEmail(user).catch((err) => {
+      console.error("Failed to send welcome email:", err);
+      // Don't fail registration if email fails
+    });
 
     return res.status(201).json({
       message: "User registered successfully",

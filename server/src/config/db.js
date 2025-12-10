@@ -27,6 +27,9 @@ const connectDB = async () => {
       serverSelectionTimeoutMS: 10000, // 10 seconds
       socketTimeoutMS: 45000,
       connectTimeoutMS: 10000,
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      minPoolSize: 2, // Maintain at least 2 socket connections
+      maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
     });
     console.log("✅ MongoDB connected");
   } catch (err) {

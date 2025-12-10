@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../auth/firebase";
 import { Link, useNavigate } from "react-router-dom";
+import { useLanguage } from "../contexts/LanguageContext";
 import "./Auth.css";
 
 export default function Login() {
   const nav = useNavigate();
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -35,38 +37,16 @@ export default function Login() {
         {/* Branding Header */}
         <div className="auth-header">
           <div className="auth-logo-text">
-            <span className="auth-logo-letter" style={{ color: "#10b981" }}>
-              W
-            </span>
-            <span className="auth-logo-letter" style={{ color: "#f59e0b" }}>
-              e
-            </span>
-            <span className="auth-logo-letter" style={{ color: "#f97316" }}>
-              l
-            </span>
-            <span className="auth-logo-letter" style={{ color: "#ec4899" }}>
-              c
-            </span>
-            <span className="auth-logo-letter" style={{ color: "#8b5cf6" }}>
-              o
-            </span>
-            <span className="auth-logo-letter" style={{ color: "#06b6d4" }}>
-              m
-            </span>
-            <span className="auth-logo-letter" style={{ color: "#14b8a6" }}>
-              e
-            </span>
+            <span className="auth-logo-wordmark">Welcome</span>
           </div>
-          <div className="auth-icons">
-            <div className="auth-icon-circle auth-icon-bag">
-              <i className="fas fa-shopping-bag"></i>
-            </div>
-            <div className="auth-icon-circle auth-icon-heart">
-              <i className="far fa-heart"></i>
-            </div>
+          <div className="auth-logo-container">
+            <img
+              src="https://i.postimg.cc/TPzxSc0Q/login.png"
+              alt="MegaMart Logo"
+              className="auth-logo-img"
+            />
           </div>
-          <h1 className="auth-title">MegaMart</h1>
-          <p className="auth-subtitle">Welcome! Please enter your account.</p>
+          <p className="auth-subtitle">{t("auth.welcomeSubtitle")}</p>
         </div>
 
         {/* Error message */}
@@ -80,26 +60,26 @@ export default function Login() {
         {/* Form */}
         <form onSubmit={submit} className="auth-form">
           <div className="auth-form-group">
-            <label className="auth-label">Email</label>
+            <label className="auth-label">{t("auth.email")}</label>
             <input
               className="auth-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
-              placeholder="Email"
+              placeholder={t("auth.email")}
               required
             />
           </div>
 
           <div className="auth-form-group">
-            <label className="auth-label">Password</label>
+            <label className="auth-label">{t("auth.password")}</label>
             <div className="auth-input-wrapper">
               <input
                 className="auth-input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 type={showPassword ? "text" : "password"}
-                placeholder="password"
+                placeholder={t("auth.password")}
                 required
               />
               <button
@@ -115,14 +95,22 @@ export default function Login() {
           </div>
 
           <button type="submit" className="auth-submit-btn">
-            Login
+            {t("auth.signInTitle")}
           </button>
+
+          {/* Link to register */}
+          <div className="auth-link">
+            {t("auth.dontHaveAccount")}{" "}
+            <Link to="/register">{t("auth.signUpHere")}</Link>
+          </div>
         </form>
 
         {/* Footer */}
         <div className="auth-footer">
           <div className="auth-dev-badge">
-            <span>Developed by Ahmed Mohammed</span>
+            <span>
+              {t("auth.developer")} {t("auth.by")} Ahmed Mohammed
+            </span>
           </div>
           <div className="auth-contact">
             <div className="auth-contact-item">
@@ -131,14 +119,9 @@ export default function Login() {
             </div>
             <div className="auth-contact-item">
               <i className="fas fa-envelope me-2"></i>
-              <span>megamart534@gmail.com</span>
+              <span>ahmedmohammedkiar2@gmail.com</span>
             </div>
           </div>
-        </div>
-
-        {/* Link to register */}
-        <div className="auth-link">
-          Don't have an account? <Link to="/register">Create account</Link>
         </div>
       </div>
     </div>

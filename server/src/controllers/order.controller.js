@@ -14,6 +14,20 @@ const {
   extractSellerIdsFromOrder,
 } = require("../services/notification.service");
 
+function isSaleActiveOnProduct(product) {
+  if (!product?.sale?.isEnabled || !product.sale?.price) return false;
+  const salePrice = Number(product.sale.price);
+  if (!salePrice || salePrice >= Number(product.price || 0)) return false;
+  const now = Date.now();
+  const start = product.sale.start
+    ? new Date(product.sale.start).getTime()
+    : null;
+  const end = product.sale.end ? new Date(product.sale.end).getTime() : null;
+  if (start && now < start) return false;
+  if (end && now > end) return false;
+  return true;
+}
+
 exports.createOrder = async (req, res) => {
   try {
     const { items, shippingAddress, paymentMethod, paymentDetails } = req.body;
@@ -47,6 +61,8 @@ exports.createOrder = async (req, res) => {
     if (commissionRate < 0) commissionRate = 0;
     if (commissionRate > 1) commissionRate = 1;
 
+    const metricsTimestamp = new Date();
+
     for (const it of items) {
       const productId = it.productId || it.product;
       const quantity = it.qty || it.quantity;
@@ -68,8 +84,11 @@ exports.createOrder = async (req, res) => {
           .json({ message: `Insufficient stock for ${p.name}` });
       }
 
-      itemsPrice += p.price * quantity;
-      const itemSubtotal = p.price * quantity;
+      const unitPrice = isSaleActiveOnProduct(p)
+        ? Number(p.sale.price)
+        : Number(p.price);
+      itemsPrice += unitPrice * quantity;
+      const itemSubtotal = unitPrice * quantity;
       const itemCommissionAmount =
         Math.round(itemSubtotal * commissionRate * 100) / 100;
       const itemSellerEarnings =
@@ -77,9 +96,11 @@ exports.createOrder = async (req, res) => {
       normalizedItems.push({
         product: p._id,
         name: p.name,
-        price: p.price,
+        price: unitPrice,
         quantity: quantity,
         image: p.images?.[0] || "",
+        category: p.category || "",
+        brand: p.brand || "",
         seller: p.seller || null,
         commissionRate,
         commissionAmount: itemCommissionAmount,
@@ -103,6 +124,17 @@ exports.createOrder = async (req, res) => {
       total: totalPrice,
       status: "pending",
     });
+
+    Promise.allSettled(
+      normalizedItems.map((item) =>
+        Product.findByIdAndUpdate(item.product, {
+          $inc: { "metrics.purchaseCount": item.quantity || 1 },
+          $set: { "metrics.lastPurchasedAt": metricsTimestamp },
+        })
+      )
+    ).catch((err) =>
+      console.error("Failed to update product metrics after order:", err)
+    );
 
     console.log("Order created successfully:", order._id);
 

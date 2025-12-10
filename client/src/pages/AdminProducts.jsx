@@ -26,6 +26,11 @@ export default function AdminProducts() {
     brand: "",
     stock: 0,
     isActive: true,
+    saleEnabled: false,
+    salePrice: "",
+    saleStart: "",
+    saleEnd: "",
+    saleBadge: "",
   };
   const [form, setForm] = useState(blank);
   const [editId, setEditId] = useState(null);
@@ -51,6 +56,28 @@ export default function AdminProducts() {
       .finally(() => setBusy(false));
   }, [loading, profile]);
 
+  const toDateInputValue = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const tzOffset = date.getTimezoneOffset();
+    const local = new Date(date.getTime() - tzOffset * 60000);
+    return local.toISOString().slice(0, 16);
+  };
+
+  const buildSalePayload = () => {
+    if (!form.saleEnabled || !form.salePrice) {
+      return { isEnabled: false };
+    }
+    return {
+      isEnabled: true,
+      price: Number(form.salePrice),
+      start: form.saleStart ? new Date(form.saleStart).toISOString() : null,
+      end: form.saleEnd ? new Date(form.saleEnd).toISOString() : null,
+      badgeText: form.saleBadge || "Sale",
+    };
+  };
+
   const onEdit = (p) => {
     setEditId(p._id);
     setForm({
@@ -63,6 +90,11 @@ export default function AdminProducts() {
       brand: p.brand || "",
       stock: p.stock || 0,
       isActive: p.isActive !== false,
+      saleEnabled: !!p.sale?.isEnabled,
+      salePrice: p.sale?.price ? String(p.sale.price) : "",
+      saleStart: p.sale?.start ? toDateInputValue(p.sale.start) : "",
+      saleEnd: p.sale?.end ? toDateInputValue(p.sale.end) : "",
+      saleBadge: p.sale?.badgeText || "",
     });
   };
 
@@ -92,6 +124,7 @@ export default function AdminProducts() {
         brand: form.brand,
         stock: Number(form.stock),
         isActive: Boolean(form.isActive),
+        sale: buildSalePayload(),
       };
       const res = editId
         ? await http.put(`/api/admin/products/${editId}`, payload)
@@ -258,9 +291,7 @@ export default function AdminProducts() {
             </div>
 
             <div className="col-12">
-              <label className="form-label">
-                Images (comma-separated URLs)
-              </label>
+              <label className="form-label">Images</label>
               <input
                 className="form-control"
                 value={form.imagesText}
@@ -360,6 +391,86 @@ export default function AdminProducts() {
                 {editId ? "Update" : "Create"}
               </button>
             </div>
+
+            {/* Sale & Promotions Section */}
+            <div className="col-12">
+              <hr />
+              <div className="form-check mb-3">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="saleEnabled"
+                  checked={form.saleEnabled}
+                  onChange={(e) =>
+                    setForm({ ...form, saleEnabled: e.target.checked })
+                  }
+                />
+                <label className="form-check-label" htmlFor="saleEnabled">
+                  <strong>Enable Sale / Deal</strong>
+                </label>
+                <small className="d-block text-muted">
+                  Create limited-time offers with discounted prices
+                </small>
+              </div>
+              {form.saleEnabled && (
+                <div className="row g-3">
+                  <div className="col-6 col-md-3">
+                    <label className="form-label">Sale Price (ETB)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="form-control"
+                      value={form.salePrice}
+                      onChange={(e) =>
+                        setForm({ ...form, salePrice: e.target.value })
+                      }
+                      placeholder="e.g. 499"
+                      required
+                    />
+                    <small className="text-muted">
+                      Must be less than regular price
+                    </small>
+                  </div>
+                  <div className="col-6 col-md-3">
+                    <label className="form-label">Badge Text</label>
+                    <input
+                      className="form-control"
+                      value={form.saleBadge}
+                      onChange={(e) =>
+                        setForm({ ...form, saleBadge: e.target.value })
+                      }
+                      placeholder="e.g. Limited Deal, Flash Sale"
+                      maxLength={40}
+                    />
+                  </div>
+                  <div className="col-12 col-md-3">
+                    <label className="form-label">Sale Start Date</label>
+                    <input
+                      type="datetime-local"
+                      className="form-control"
+                      value={form.saleStart}
+                      onChange={(e) =>
+                        setForm({ ...form, saleStart: e.target.value })
+                      }
+                    />
+                    <small className="text-muted">Optional</small>
+                  </div>
+                  <div className="col-12 col-md-3">
+                    <label className="form-label">Sale End Date</label>
+                    <input
+                      type="datetime-local"
+                      className="form-control"
+                      value={form.saleEnd}
+                      onChange={(e) =>
+                        setForm({ ...form, saleEnd: e.target.value })
+                      }
+                    />
+                    <small className="text-muted">Optional</small>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </form>
@@ -373,6 +484,7 @@ export default function AdminProducts() {
                 <tr>
                   <th>Name</th>
                   <th>Price</th>
+                  <th>Sale</th>
                   <th>Category</th>
                   <th>Brand</th>
                   <th>Stock</th>
@@ -384,7 +496,26 @@ export default function AdminProducts() {
                 {items.map((p) => (
                   <tr key={p._id}>
                     <td className="fw-medium">{p.name}</td>
-                    <td>${p.price}</td>
+                    <td>
+                      ETB {p.price?.toLocaleString()}
+                      {p.sale?.isEnabled && p.sale?.price && (
+                        <div className="text-danger small">
+                          <del className="text-muted">
+                            ETB {p.price?.toLocaleString()}
+                          </del>{" "}
+                          <strong>ETB {p.sale.price?.toLocaleString()}</strong>
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {p.sale?.isEnabled ? (
+                        <span className="badge bg-danger">
+                          {p.sale.badgeText || "Sale"}
+                        </span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
                     <td>{p.category || "—"}</td>
                     <td>{p.brand || "—"}</td>
                     <td>{p.stock}</td>

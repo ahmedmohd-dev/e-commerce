@@ -3,10 +3,14 @@ import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "../auth/firebase";
 import { useNavigate, Link } from "react-router-dom";
 import { registerUser } from "../api/authApi";
+import { useLanguage } from "../contexts/LanguageContext";
+import SuccessToast from "../components/SuccessToast";
+import { uploadImageToCloudinary } from "../utils/cloudinary";
 import "./Auth.css";
 
 export default function Register() {
   const nav = useNavigate();
+  const { t } = useLanguage();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -19,11 +23,15 @@ export default function Register() {
   const [sellerProfile, setSellerProfile] = useState({
     shopName: "",
     description: "",
+    tradeLicense: "",
   });
+  const [tradeLicenseFile, setTradeLicenseFile] = useState(null);
+  const [uploadingLicense, setUploadingLicense] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -50,6 +58,11 @@ export default function Register() {
       return;
     }
 
+    if (userType === "seller" && !sellerProfile.tradeLicense) {
+      setError("Trade license is required for seller registration!");
+      return;
+    }
+
     setBusy(true);
 
     try {
@@ -61,7 +74,7 @@ export default function Register() {
 
       // Register user in backend
       try {
-        await registerUser({
+        const response = await registerUser({
           firebaseUid: cred.user.uid,
           email: cred.user.email,
           displayName: fullName,
@@ -75,25 +88,62 @@ export default function Register() {
               : undefined,
         });
 
-        // Show success message based on user type
-        if (userType === "seller") {
-          alert(
-            "Registration successful! Your seller application is pending admin approval. You'll be notified once approved."
-          );
-        }
+        // Show success toast notification
+        setShowSuccessToast(true);
 
-        nav("/");
+        // Auto-navigate to home page after a brief delay (user is already logged in via Firebase)
+        setTimeout(() => {
+          nav("/");
+        }, 1500);
       } catch (regErr) {
         console.error("Registration error:", regErr);
-        setError(
-          regErr.response?.data?.message ||
-            "Registration completed but backend registration failed. Please try logging in."
-        );
+        const errorMessage =
+          regErr.response?.data?.message || "Registration failed";
+        setError(errorMessage);
       }
     } catch (err) {
       setError(err.message || "Registration failed");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleTradeLicenseUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type (PDF or image)
+    const validTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+    ];
+    if (!validTypes.includes(file.type)) {
+      setError("Please upload a PDF or image file (JPG, PNG)");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("File size must be less than 5MB");
+      return;
+    }
+
+    setUploadingLicense(true);
+    setError("");
+    try {
+      const url = await uploadImageToCloudinary(file);
+      setSellerProfile({
+        ...sellerProfile,
+        tradeLicense: url,
+      });
+      setTradeLicenseFile(file);
+    } catch (err) {
+      setError("Failed to upload trade license. Please try again.");
+      console.error("Upload error:", err);
+    } finally {
+      setUploadingLicense(false);
     }
   };
 
@@ -108,38 +158,16 @@ export default function Register() {
         {/* Branding Header */}
         <div className="auth-header">
           <div className="auth-logo-text">
-            <span className="auth-logo-letter" style={{ color: "#10b981" }}>
-              W
-            </span>
-            <span className="auth-logo-letter" style={{ color: "#f59e0b" }}>
-              e
-            </span>
-            <span className="auth-logo-letter" style={{ color: "#f97316" }}>
-              l
-            </span>
-            <span className="auth-logo-letter" style={{ color: "#ec4899" }}>
-              c
-            </span>
-            <span className="auth-logo-letter" style={{ color: "#8b5cf6" }}>
-              o
-            </span>
-            <span className="auth-logo-letter" style={{ color: "#06b6d4" }}>
-              m
-            </span>
-            <span className="auth-logo-letter" style={{ color: "#14b8a6" }}>
-              e
-            </span>
+            <span className="auth-logo-wordmark">Welcome</span>
           </div>
-          <div className="auth-icons">
-            <div className="auth-icon-circle auth-icon-bag">
-              <i className="fas fa-shopping-bag"></i>
-            </div>
-            <div className="auth-icon-circle auth-icon-heart">
-              <i className="far fa-heart"></i>
-            </div>
+          <div className="auth-logo-container">
+            <img
+              src="https://i.postimg.cc/TPzxSc0Q/login.png"
+              alt="MegaMart Logo"
+              className="auth-logo-img"
+            />
           </div>
-          <h1 className="auth-title">MegaMart</h1>
-          <p className="auth-subtitle">Create your account to get started.</p>
+          <p className="auth-subtitle">{t("auth.signUpTitle")}</p>
         </div>
 
         {/* Error message */}
@@ -154,31 +182,31 @@ export default function Register() {
         <form onSubmit={submit} className="auth-form">
           <div className="auth-form-row">
             <div className="auth-form-group">
-              <label className="auth-label">First Name</label>
+              <label className="auth-label">{t("auth.firstName")}</label>
               <input
                 className="auth-input"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 type="text"
-                placeholder="First Name"
+                placeholder={t("auth.firstName")}
                 required
               />
             </div>
             <div className="auth-form-group">
-              <label className="auth-label">Last Name</label>
+              <label className="auth-label">{t("auth.lastName")}</label>
               <input
                 className="auth-input"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 type="text"
-                placeholder="Last Name"
+                placeholder={t("auth.lastName")}
                 required
               />
             </div>
           </div>
 
           <div className="auth-form-group">
-            <label className="auth-label">Phone</label>
+            <label className="auth-label">{t("auth.phone")}</label>
             <input
               className="auth-input"
               value={phone}
@@ -190,7 +218,7 @@ export default function Register() {
           </div>
 
           <div className="auth-form-group">
-            <label className="auth-label">Email</label>
+            <label className="auth-label">{t("auth.email")}</label>
             <input
               className="auth-input"
               value={email}
@@ -203,7 +231,7 @@ export default function Register() {
 
           <div className="auth-form-row">
             <div className="auth-form-group">
-              <label className="auth-label">Password</label>
+              <label className="auth-label">{t("auth.password")}</label>
               <div className="auth-input-wrapper">
                 <input
                   className="auth-input"
@@ -228,7 +256,7 @@ export default function Register() {
               </div>
             </div>
             <div className="auth-form-group">
-              <label className="auth-label">Password Confirmation</label>
+              <label className="auth-label">{t("auth.confirmPassword")}</label>
               <div className="auth-input-wrapper">
                 <input
                   className="auth-input"
@@ -272,7 +300,7 @@ export default function Register() {
                   onChange={(e) => setUserType(e.target.value)}
                 />
                 <label htmlFor="buyer">
-                  <strong>Buyer</strong>
+                  <strong>{t("auth.buyer")}</strong>
                   <br />
                   <small>Browse and purchase products</small>
                 </label>
@@ -291,7 +319,7 @@ export default function Register() {
                   onChange={(e) => setUserType(e.target.value)}
                 />
                 <label htmlFor="seller">
-                  <strong>Seller</strong>
+                  <strong>{t("auth.seller")}</strong>
                   <br />
                   <small>Sell products (requires approval)</small>
                 </label>
@@ -332,6 +360,43 @@ export default function Register() {
                   rows={3}
                   placeholder="Brief description of your shop/business"
                 />
+              </div>
+              <div className="auth-form-group">
+                <label className="auth-label">
+                  Trade License <span style={{ color: "#dc3545" }}>*</span>
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="auth-input"
+                  onChange={handleTradeLicenseUpload}
+                  disabled={uploadingLicense}
+                  required
+                />
+                {uploadingLicense && (
+                  <small
+                    className="text-muted"
+                    style={{ display: "block", marginTop: "4px" }}
+                  >
+                    <i className="fas fa-spinner fa-spin me-1"></i>
+                    Uploading...
+                  </small>
+                )}
+                {sellerProfile.tradeLicense && !uploadingLicense && (
+                  <small
+                    className="text-success"
+                    style={{ display: "block", marginTop: "4px" }}
+                  >
+                    <i className="fas fa-check-circle me-1"></i>
+                    Trade license uploaded successfully
+                  </small>
+                )}
+                <small
+                  className="text-muted"
+                  style={{ display: "block", marginTop: "4px" }}
+                >
+                  Upload a PDF or image file (JPG, PNG). Max size: 5MB
+                </small>
               </div>
               <div className="auth-info-box">
                 <i className="fas fa-info-circle me-2"></i>
@@ -381,7 +446,9 @@ export default function Register() {
         {/* Footer */}
         <div className="auth-footer">
           <div className="auth-dev-badge">
-            <span>Developed by Ahmed Mohammed</span>
+            <span>
+              {t("auth.developer")} {t("auth.by")} Ahmed Mohammed
+            </span>
           </div>
           <div className="auth-contact">
             <div className="auth-contact-item">
@@ -390,7 +457,7 @@ export default function Register() {
             </div>
             <div className="auth-contact-item">
               <i className="fas fa-envelope me-2"></i>
-              <span>megamart534@gmail.com</span>
+              <span>ahmedmohammedkiar2@gmail.com</span>
             </div>
           </div>
         </div>
@@ -400,6 +467,17 @@ export default function Register() {
           Already have an account? <Link to="/login">Login</Link>
         </div>
       </div>
+
+      {/* Success Toast */}
+      <SuccessToast
+        show={showSuccessToast}
+        message={
+          userType === "seller"
+            ? "Registration successful! Your seller application is pending admin approval."
+            : "Registered successfully! Welcome to MegaMart!"
+        }
+        onClose={() => setShowSuccessToast(false)}
+      />
     </div>
   );
 }

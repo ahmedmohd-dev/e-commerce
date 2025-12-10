@@ -6,14 +6,24 @@ export default function SearchBar({
   placeholder = "Search products...",
   maxWidth = 560,
   className = "",
+  onSubmit, // optional custom submit handler (used for mobile overlay)
+  value, // controlled value (optional)
+  onChange, // controlled onChange handler (optional)
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(value || "");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const searchRef = useRef(null);
   const suggestionsRef = useRef(null);
+
+  // Sync with controlled value if provided
+  useEffect(() => {
+    if (value !== undefined) {
+      setQuery(value);
+    }
+  }, [value]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -58,10 +68,26 @@ export default function SearchBar({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (query.trim()) {
-      navigate(`/products?search=${encodeURIComponent(query.trim())}`);
-      setShowSuggestions(false);
-      setQuery("");
+    e.stopPropagation();
+    if (!query.trim()) return;
+    const term = query.trim();
+    if (onSubmit) {
+      onSubmit(term, {
+        clear: () => setQuery(""),
+        closeSuggestions: () => setShowSuggestions(false),
+      });
+      return;
+    }
+    navigate(`/products?search=${encodeURIComponent(term)}`);
+    setShowSuggestions(false);
+    setQuery("");
+  };
+
+  const handleChange = (e) => {
+    const newValue = e.target.value;
+    setQuery(newValue);
+    if (onChange) {
+      onChange(newValue);
     }
   };
 
@@ -103,8 +129,8 @@ export default function SearchBar({
             type="text"
             className="form-control"
             placeholder={placeholder}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={value !== undefined ? value : query}
+            onChange={handleChange}
             onFocus={() => {
               if (suggestions.length > 0) setShowSuggestions(true);
             }}

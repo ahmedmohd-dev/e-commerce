@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getOrder } from "../api/orderApi";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function OrderTracking() {
   const { orderId } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -29,7 +31,7 @@ export default function OrderTracking() {
       <div className="container mt-5">
         <div className="text-center py-5">
           <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
+            <span className="visually-hidden">{t("common.loading")}</span>
           </div>
         </div>
       </div>
@@ -44,9 +46,9 @@ export default function OrderTracking() {
             <div className="card border-0 shadow-sm">
               <div className="card-body py-5">
                 <i className="fas fa-exclamation-triangle fa-4x text-warning mb-4"></i>
-                <h3 className="text-muted">Order not found</h3>
+                <h3 className="text-muted">{t("orders.notFound")}</h3>
                 <Link to="/profile" className="btn btn-primary mt-3">
-                  Back to Orders
+                  {t("orders.backToOrders")}
                 </Link>
               </div>
             </div>
@@ -57,16 +59,44 @@ export default function OrderTracking() {
   }
 
   const statusSteps = [
-    { key: "pending", label: "Pending", icon: "fa-shopping-cart" },
-    { key: "paid", label: "Payment Verified", icon: "fa-money-bill" },
-    { key: "processing", label: "Processing", icon: "fa-box-open" },
-    { key: "shipped", label: "Shipped", icon: "fa-shipping-fast" },
-    { key: "completed", label: "Completed", icon: "fa-check-double" },
+    {
+      key: "pending",
+      label: t("orders.timeline.pending"),
+      icon: "fa-shopping-cart",
+    },
+    {
+      key: "paid",
+      label: t("orders.timeline.paymentVerified"),
+      icon: "fa-money-bill",
+    },
+    {
+      key: "processing",
+      label: t("orders.timeline.processing"),
+      icon: "fa-box-open",
+    },
+    {
+      key: "shipped",
+      label: t("orders.timeline.shipped"),
+      icon: "fa-shipping-fast",
+    },
+    {
+      key: "completed",
+      label: t("orders.timeline.completed"),
+      icon: "fa-check-double",
+    },
   ];
 
   const cancelledSteps = [
-    { key: "pending", label: "Order Placed", icon: "fa-shopping-cart" },
-    { key: "cancelled", label: "Cancelled", icon: "fa-times-circle" },
+    {
+      key: "pending",
+      label: t("orders.timeline.orderPlaced"),
+      icon: "fa-shopping-cart",
+    },
+    {
+      key: "cancelled",
+      label: t("orders.timeline.cancelled"),
+      icon: "fa-times-circle",
+    },
   ];
 
   const isCancelled = order.status === "cancelled";
@@ -98,12 +128,23 @@ export default function OrderTracking() {
     }
   };
 
+  const getStatusLabel = (status) => {
+    if (!status) return t("orders.pending");
+    const key = `orders.${status}`;
+    const translated = t(key);
+    if (translated === key) {
+      return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+    return translated;
+  };
+
   return (
     <div className="container mt-4 mb-5">
       <div className="row mb-4">
         <div className="col-12">
           <Link to="/profile" className="text-decoration-none">
-            <i className="fas fa-arrow-left me-2"></i>Back to Orders
+            <i className="fas fa-arrow-left me-2"></i>
+            {t("orders.backToOrders")}
           </Link>
         </div>
       </div>
@@ -114,15 +155,16 @@ export default function OrderTracking() {
             <div className="card-header bg-white">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <h4 className="mb-1">Order Tracking</h4>
+                  <h4 className="mb-1">{t("orders.orderTracking")}</h4>
                   <small className="text-muted">
-                    Order #{order._id.slice(-8).toUpperCase()}
+                    {t("orders.orderNumberShort")}{" "}
+                    {order._id.slice(-8).toUpperCase()}
                   </small>
                 </div>
                 <span
                   className={`badge bg-${getStatusColor(order.status)} fs-6`}
                 >
-                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                  {getStatusLabel(order.status)}
                 </span>
               </div>
             </div>
@@ -187,7 +229,7 @@ export default function OrderTracking() {
                         </div>
                         {isCurrent && (
                           <small className="text-muted d-block mt-1">
-                            Current Status
+                            {t("orders.currentStatus")}
                           </small>
                         )}
                       </div>
@@ -206,7 +248,8 @@ export default function OrderTracking() {
           <div className="card border-0 shadow-sm mb-4">
             <div className="card-header bg-white">
               <h5 className="mb-0">
-                <i className="fas fa-box me-2"></i>Order Items
+                <i className="fas fa-box me-2"></i>
+                {t("orders.orderItems")}
               </h5>
             </div>
             <div className="card-body p-0">
@@ -228,7 +271,7 @@ export default function OrderTracking() {
                   <div className="flex-grow-1">
                     <h6 className="mb-1">{item.name || item.product?.name}</h6>
                     <p className="text-muted small mb-0">
-                      Quantity: {item.quantity} × ETB{" "}
+                      {t("orders.quantity")}: {item.quantity} × ETB{" "}
                       {item.price?.toLocaleString() || "0"}
                     </p>
                   </div>
@@ -248,7 +291,8 @@ export default function OrderTracking() {
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-white">
               <h5 className="mb-0">
-                <i className="fas fa-map-marker-alt me-2"></i>Shipping Address
+                <i className="fas fa-map-marker-alt me-2"></i>
+                {t("orders.shippingAddress")}
               </h5>
             </div>
             <div className="card-body">
@@ -278,11 +322,11 @@ export default function OrderTracking() {
             style={{ top: "20px" }}
           >
             <div className="card-header bg-white">
-              <h5 className="mb-0">Order Summary</h5>
+              <h5 className="mb-0">{t("orders.orderSummary")}</h5>
             </div>
             <div className="card-body">
               <div className="d-flex justify-content-between mb-2">
-                <span>Subtotal</span>
+                <span>{t("orders.subtotal")}</span>
                 <span>
                   ETB{" "}
                   {(
@@ -295,19 +339,21 @@ export default function OrderTracking() {
               </div>
               {order.tax && (
                 <div className="d-flex justify-content-between mb-2">
-                  <span>Tax</span>
+                  <span>{t("orders.tax")}</span>
                   <span>ETB {order.tax.toLocaleString()}</span>
                 </div>
               )}
               <div className="d-flex justify-content-between mb-2">
-                <span>Shipping</span>
+                <span>{t("orders.shipping")}</span>
                 <span className="text-success">
-                  {order.shipping === 0 ? "Free" : `ETB ${order.shipping}`}
+                  {order.shipping === 0
+                    ? t("common.free")
+                    : `ETB ${order.shipping}`}
                 </span>
               </div>
               <hr />
               <div className="d-flex justify-content-between mb-3">
-                <span className="h5 fw-bold">Total</span>
+                <span className="h5 fw-bold">{t("orders.total")}</span>
                 <span className="h5 fw-bold text-primary">
                   ETB{" "}
                   {(
@@ -320,7 +366,7 @@ export default function OrderTracking() {
               </div>
 
               <div className="mb-3">
-                <h6 className="fw-bold">Payment Method</h6>
+                <h6 className="fw-bold">{t("orders.paymentMethod")}</h6>
                 <p className="text-muted mb-0">
                   <i
                     className={`fas ${
@@ -329,7 +375,9 @@ export default function OrderTracking() {
                         : "fab fa-paypal"
                     } me-2`}
                   ></i>
-                  {order.paymentMethod === "telebirr" ? "Telebirr" : "PayPal"}
+                  {order.paymentMethod === "telebirr"
+                    ? t("orders.paymentMethods.telebirr")
+                    : t("orders.paymentMethods.paypal")}
                 </p>
                 {order.paymentDetails?.transactionId && (
                   <small className="text-muted">
@@ -343,7 +391,8 @@ export default function OrderTracking() {
                   to={`/order-confirmation/${order._id}`}
                   className="btn btn-orange"
                 >
-                  <i className="fas fa-receipt me-2"></i>View Receipt
+                  <i className="fas fa-receipt me-2"></i>
+                  {t("orders.viewReceipt")}
                 </Link>
               </div>
             </div>

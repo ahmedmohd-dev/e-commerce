@@ -2,13 +2,19 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import http from "../api/http";
 import { generatePaymentQRCode } from "../utils/receiptGenerator";
+import { getEffectivePrice, formatETB } from "../utils/pricing";
 
 export default function Checkout() {
   const navigate = useNavigate();
   const { items, getTotalPrice, clearCart } = useCart();
   const { user } = useAuth();
+  const { t } = useLanguage();
+  const subtotal = getTotalPrice();
+  const tax = subtotal * 0.1;
+  const total = subtotal + tax;
 
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("telebirr");
@@ -74,7 +80,7 @@ export default function Checkout() {
         items: items.map((item) => ({
           product: item.product._id,
           quantity: item.quantity,
-          price: item.product.price,
+          price: getEffectivePrice(item.product),
         })),
         shippingAddress: {
           firstName: formData.firstName,
@@ -125,16 +131,16 @@ export default function Checkout() {
             <div className="card border-0 shadow-sm">
               <div className="card-body py-5">
                 <i className="fas fa-shopping-cart fa-4x text-muted mb-4"></i>
-                <h3 className="text-muted">Your cart is empty</h3>
+                <h3 className="text-muted">{t("cart.empty")}</h3>
                 <p className="text-muted mb-4">
-                  Add some products to your cart before checkout.
+                  {t("checkout.addProductsFirst")}
                 </p>
                 <button
                   className="btn btn-primary btn-lg"
                   onClick={() => navigate("/products")}
                 >
                   <i className="fas fa-shopping-bag me-2"></i>
-                  Continue Shopping
+                  {t("cart.continueShopping")}
                 </button>
               </div>
             </div>
@@ -148,7 +154,7 @@ export default function Checkout() {
     <div className="container mt-4">
       <div className="row">
         <div className="col-12">
-          <h1 className="display-6 fw-bold mb-4">Checkout</h1>
+          <h1 className="display-6 fw-bold mb-4">{t("checkout.title")}</h1>
         </div>
       </div>
 
@@ -160,13 +166,15 @@ export default function Checkout() {
               <div className="card-header bg-light">
                 <h5 className="mb-0">
                   <i className="fas fa-shipping-fast me-2"></i>
-                  Shipping Information
+                  {t("checkout.shippingInfo")}
                 </h5>
               </div>
               <div className="card-body">
                 <div className="row">
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">First Name *</label>
+                    <label className="form-label">
+                      {t("checkout.firstName")} *
+                    </label>
                     <input
                       type="text"
                       className="form-control"
@@ -177,7 +185,9 @@ export default function Checkout() {
                     />
                   </div>
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">Last Name *</label>
+                    <label className="form-label">
+                      {t("checkout.lastName")} *
+                    </label>
                     <input
                       type="text"
                       className="form-control"
@@ -191,7 +201,9 @@ export default function Checkout() {
 
                 <div className="row">
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">Email *</label>
+                    <label className="form-label">
+                      {t("checkout.email")} *
+                    </label>
                     <input
                       type="email"
                       className="form-control"
@@ -202,7 +214,9 @@ export default function Checkout() {
                     />
                   </div>
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">Phone *</label>
+                    <label className="form-label">
+                      {t("checkout.phone")} *
+                    </label>
                     <input
                       type="tel"
                       className="form-control"
@@ -215,7 +229,9 @@ export default function Checkout() {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label">Address *</label>
+                  <label className="form-label">
+                    {t("checkout.address")} *
+                  </label>
                   <input
                     type="text"
                     className="form-control"
@@ -229,7 +245,7 @@ export default function Checkout() {
 
                 <div className="row">
                   <div className="col-md-4 mb-3">
-                    <label className="form-label">City *</label>
+                    <label className="form-label">{t("checkout.city")} *</label>
                     <input
                       type="text"
                       className="form-control"
@@ -240,7 +256,9 @@ export default function Checkout() {
                     />
                   </div>
                   <div className="col-md-4 mb-3">
-                    <label className="form-label">State/Region *</label>
+                    <label className="form-label">
+                      {t("checkout.state")} *
+                    </label>
                     <input
                       type="text"
                       className="form-control"
@@ -251,7 +269,9 @@ export default function Checkout() {
                     />
                   </div>
                   <div className="col-md-4 mb-3">
-                    <label className="form-label">ZIP Code *</label>
+                    <label className="form-label">
+                      {t("checkout.zipCode")} *
+                    </label>
                     <input
                       type="text"
                       className="form-control"
@@ -264,7 +284,9 @@ export default function Checkout() {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label">Country *</label>
+                  <label className="form-label">
+                    {t("checkout.country")} *
+                  </label>
                   <select
                     className="form-select"
                     name="country"
@@ -280,14 +302,16 @@ export default function Checkout() {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label">Order Notes</label>
+                  <label className="form-label">
+                    {t("checkout.orderNotes")}
+                  </label>
                   <textarea
                     className="form-control"
                     name="notes"
                     value={formData.notes}
                     onChange={handleInputChange}
                     rows="3"
-                    placeholder="Special instructions for your order..."
+                    placeholder={t("checkout.orderNotes")}
                   />
                 </div>
               </div>
@@ -298,7 +322,7 @@ export default function Checkout() {
               <div className="card-header bg-light">
                 <h5 className="mb-0">
                   <i className="fas fa-credit-card me-2"></i>
-                  Payment Method
+                  {t("checkout.paymentMethod")}
                 </h5>
               </div>
               <div className="card-body">
@@ -342,8 +366,8 @@ export default function Checkout() {
                 {paymentMethod === "telebirr" && (
                   <div className="alert alert-info">
                     <h6>
-                      <i className="fas fa-info-circle me-2"></i>Telebirr
-                      Payment Instructions:
+                      <i className="fas fa-info-circle me-2"></i>Telebirr{" "}
+                      {t("checkout.paymentInstructions")}
                     </h6>
 
                     {/* QR Code Section */}
@@ -383,27 +407,28 @@ export default function Checkout() {
                       </div>
                       <div className="col-md-6">
                         <div className="payment-instructions">
-                          <h6 className="mb-2">Manual Payment</h6>
+                          <h6 className="mb-2">
+                            {t("checkout.manualPayment")}
+                          </h6>
                           <ol className="mb-2">
                             <li>
-                              Send payment to: <strong>+251 9XX XXX XXX</strong>
+                              {t("checkout.sendPaymentTo")}{" "}
+                              <strong>+251 9XX XXX XXX</strong>
                             </li>
                             <li>
-                              Amount:{" "}
-                              <strong>
-                                ${(getTotalPrice() * 1.1).toFixed(2)}
-                              </strong>
+                              {t("common.amount")}:{" "}
+                              <strong>{formatETB(total)}</strong>
                             </li>
-                            <li>
-                              Enter the transaction ID below after payment
-                            </li>
+                            <li>{t("checkout.enterTransactionId")}</li>
                           </ol>
                         </div>
                       </div>
                     </div>
 
                     <div className="mb-3">
-                      <label className="form-label">Transaction ID *</label>
+                      <label className="form-label">
+                        {t("checkout.transactionId")} *
+                      </label>
                       <input
                         type="text"
                         className="form-control"
@@ -411,7 +436,7 @@ export default function Checkout() {
                         onChange={(e) =>
                           setTelebirrTransactionId(e.target.value)
                         }
-                        placeholder="Enter Telebirr transaction ID"
+                        placeholder={t("checkout.transactionId")}
                         required
                       />
                     </div>
@@ -435,7 +460,7 @@ export default function Checkout() {
               style={{ top: "20px" }}
             >
               <div className="card-header bg-light">
-                <h5 className="mb-0">Order Summary</h5>
+                <h5 className="mb-0">{t("checkout.orderSummary")}</h5>
               </div>
               <div className="card-body">
                 {items.map((item) => (
@@ -448,7 +473,9 @@ export default function Checkout() {
                       <small className="text-muted">Qty: {item.quantity}</small>
                     </div>
                     <span className="fw-bold">
-                      ${(item.product.price * item.quantity).toFixed(2)}
+                      {formatETB(
+                        getEffectivePrice(item.product) * item.quantity
+                      )}
                     </span>
                   </div>
                 ))}
@@ -456,26 +483,26 @@ export default function Checkout() {
                 <hr />
 
                 <div className="d-flex justify-content-between mb-2">
-                  <span>Subtotal</span>
-                  <span>${getTotalPrice().toFixed(2)}</span>
+                  <span>{t("cart.subtotal")}</span>
+                  <span>{formatETB(subtotal)}</span>
                 </div>
 
                 <div className="d-flex justify-content-between mb-2">
                   <span>Tax (10%)</span>
-                  <span>${(getTotalPrice() * 0.1).toFixed(2)}</span>
+                  <span>{formatETB(tax)}</span>
                 </div>
 
                 <div className="d-flex justify-content-between mb-2">
-                  <span>Shipping</span>
+                  <span>{t("products.freeShipping")}</span>
                   <span className="text-success">Free</span>
                 </div>
 
                 <hr />
 
                 <div className="d-flex justify-content-between mb-4">
-                  <span className="h5 fw-bold">Total</span>
+                  <span className="h5 fw-bold">{t("cart.total")}</span>
                   <span className="h5 fw-bold text-primary">
-                    ${(getTotalPrice() * 1.1).toFixed(2)}
+                    {formatETB(total)}
                   </span>
                 </div>
 
@@ -498,7 +525,7 @@ export default function Checkout() {
                   ) : (
                     <>
                       <i className="fas fa-credit-card me-2"></i>
-                      Place Order
+                      {t("checkout.placeOrder")}
                     </>
                   )}
                 </button>
@@ -506,7 +533,7 @@ export default function Checkout() {
                 <div className="mt-3 text-center">
                   <small className="text-muted">
                     <i className="fas fa-shield-alt me-1"></i>
-                    Secure checkout with SSL encryption
+                    {t("checkout.secureCheckout")}
                   </small>
                 </div>
               </div>

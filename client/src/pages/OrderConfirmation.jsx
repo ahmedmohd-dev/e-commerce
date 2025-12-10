@@ -3,12 +3,14 @@ import { useParams, Link } from "react-router-dom";
 import http from "../api/http";
 import { downloadReceipt } from "../utils/receiptGenerator";
 import ReceiptPreview from "../components/ReceiptPreview";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -35,7 +37,7 @@ export default function OrderConfirmation() {
       await downloadReceipt(order);
     } catch (error) {
       console.error("Failed to download receipt:", error);
-      alert("Failed to download receipt. Please try again.");
+      alert(t("orders.downloadFailed"));
     } finally {
       setDownloading(false);
     }
@@ -46,7 +48,7 @@ export default function OrderConfirmation() {
       <div className="container mt-5">
         <div className="text-center">
           <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
+            <span className="visually-hidden">{t("common.loading")}</span>
           </div>
         </div>
       </div>
@@ -61,13 +63,13 @@ export default function OrderConfirmation() {
             <div className="card border-0 shadow-sm">
               <div className="card-body py-5">
                 <i className="fas fa-exclamation-triangle fa-4x text-warning mb-4"></i>
-                <h3 className="text-muted">Order not found</h3>
+                <h3 className="text-muted">{t("orders.notFound")}</h3>
                 <p className="text-muted mb-4">
-                  The order you're looking for doesn't exist.
+                  {t("orders.notFoundDescription")}
                 </p>
                 <Link to="/" className="btn btn-primary btn-lg">
                   <i className="fas fa-home me-2"></i>
-                  Go Home
+                  {t("orders.goHome")}
                 </Link>
               </div>
             </div>
@@ -114,17 +116,29 @@ export default function OrderConfirmation() {
     }
   };
 
+  const translateStatus = (status, translate) => {
+    if (!status) {
+      const fallback = translate("orders.pending");
+      return fallback === "orders.pending" ? "Pending" : fallback;
+    }
+    const key = `orders.${status}`;
+    const label = translate(key);
+    if (label === key) {
+      return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+    return label;
+  };
+
   return (
     <div className="container mt-4">
       <div className="row">
         <div className="col-12">
           <div className="text-center mb-5">
             <i className="fas fa-check-circle fa-5x text-success mb-4"></i>
-            <h1 className="display-5 fw-bold text-success">Order Confirmed!</h1>
-            <p className="lead text-muted">
-              Thank you for your order. We've received your order and will
-              process it shortly.
-            </p>
+            <h1 className="display-5 fw-bold text-success">
+              {t("orders.confirmedTitle")}
+            </h1>
+            <p className="lead text-muted">{t("orders.confirmedMessage")}</p>
           </div>
         </div>
       </div>
@@ -139,18 +153,18 @@ export default function OrderConfirmation() {
             <div className="card-header bg-light">
               <h5 className="mb-0">
                 <i className="fas fa-receipt me-2"></i>
-                Order Details
+                {t("orders.orderDetails")}
               </h5>
             </div>
             <div className="card-body">
               <div className="row">
                 <div className="col-md-6">
-                  <h6 className="fw-bold">Order Number</h6>
+                  <h6 className="fw-bold">{t("orders.orderNumber")}</h6>
                   <p className="text-muted">
                     #{order._id.slice(-8).toUpperCase()}
                   </p>
 
-                  <h6 className="fw-bold">Order Date</h6>
+                  <h6 className="fw-bold">{t("orders.orderDate")}</h6>
                   <p className="text-muted">
                     {new Date(order.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",
@@ -162,18 +176,17 @@ export default function OrderConfirmation() {
                   </p>
                 </div>
                 <div className="col-md-6">
-                  <h6 className="fw-bold">Order Status</h6>
+                  <h6 className="fw-bold">{t("orders.orderStatus")}</h6>
                   <span
                     className={`badge bg-${getStatusColor(order.status)} fs-6`}
                   >
                     <i
                       className={`fas ${getStatusIcon(order.status)} me-1`}
                     ></i>
-                    {order.status.charAt(0).toUpperCase() +
-                      order.status.slice(1)}
+                    {translateStatus(order.status, t)}
                   </span>
 
-                  <h6 className="fw-bold mt-3">Payment Method</h6>
+                  <h6 className="fw-bold mt-3">{t("orders.paymentMethod")}</h6>
                   <p className="text-muted">
                     <i
                       className={`fas ${
@@ -182,7 +195,9 @@ export default function OrderConfirmation() {
                           : "fab fa-paypal"
                       } me-2`}
                     ></i>
-                    {order.paymentMethod === "telebirr" ? "Telebirr" : "PayPal"}
+                    {order.paymentMethod === "telebirr"
+                      ? t("orders.paymentMethods.telebirr")
+                      : t("orders.paymentMethods.paypal")}
                   </p>
                 </div>
               </div>
@@ -194,7 +209,7 @@ export default function OrderConfirmation() {
             <div className="card-header bg-light">
               <h5 className="mb-0">
                 <i className="fas fa-map-marker-alt me-2"></i>
-                Shipping Address
+                {t("orders.shippingAddress")}
               </h5>
             </div>
             <div className="card-body">
@@ -225,7 +240,7 @@ export default function OrderConfirmation() {
             <div className="card-header bg-light">
               <h5 className="mb-0">
                 <i className="fas fa-box me-2"></i>
-                Order Items
+                {t("orders.orderItems")}
               </h5>
             </div>
             <div className="card-body p-0">
@@ -247,7 +262,9 @@ export default function OrderConfirmation() {
                       </p>
                     </div>
                     <div className="col-md-2 text-center">
-                      <span className="text-muted">Qty: {item.quantity}</span>
+                      <span className="text-muted">
+                        {t("orders.quantityShort")}: {item.quantity}
+                      </span>
                     </div>
                     <div className="col-md-2 text-end">
                       <span className="fw-bold">
@@ -271,11 +288,11 @@ export default function OrderConfirmation() {
             style={{ top: "20px" }}
           >
             <div className="card-header bg-light">
-              <h5 className="mb-0">Order Summary</h5>
+              <h5 className="mb-0">{t("orders.orderSummary")}</h5>
             </div>
             <div className="card-body">
               <div className="d-flex justify-content-between mb-2">
-                <span>Subtotal</span>
+                <span>{t("orders.subtotal")}</span>
                 <span>
                   ETB{" "}
                   {(
@@ -289,22 +306,24 @@ export default function OrderConfirmation() {
 
               {order.tax && (
                 <div className="d-flex justify-content-between mb-2">
-                  <span>Tax</span>
+                  <span>{t("orders.tax")}</span>
                   <span>ETB {order.tax.toLocaleString()}</span>
                 </div>
               )}
 
               <div className="d-flex justify-content-between mb-2">
-                <span>Shipping</span>
+                <span>{t("orders.shipping")}</span>
                 <span className="text-success">
-                  {order.shipping === 0 ? "Free" : `ETB ${order.shipping}`}
+                  {order.shipping === 0
+                    ? t("common.free")
+                    : `ETB ${order.shipping}`}
                 </span>
               </div>
 
               <hr />
 
               <div className="d-flex justify-content-between mb-4">
-                <span className="h5 fw-bold">Total</span>
+                <span className="h5 fw-bold">{t("orders.total")}</span>
                 <span className="h5 fw-bold text-primary">
                   ETB{" "}
                   {(
@@ -318,7 +337,7 @@ export default function OrderConfirmation() {
 
               {order.notes && (
                 <div className="mb-3">
-                  <h6 className="fw-bold">Order Notes</h6>
+                  <h6 className="fw-bold">{t("orders.orderNotes")}</h6>
                   <p className="text-muted small">{order.notes}</p>
                 </div>
               )}
@@ -335,29 +354,29 @@ export default function OrderConfirmation() {
                         className="spinner-border spinner-border-sm me-2"
                         role="status"
                       ></span>
-                      Generating...
+                      {t("orders.generatingReceipt")}
                     </>
                   ) : (
                     <>
                       <i className="fas fa-download me-2"></i>
-                      Download Receipt
+                      {t("orders.downloadReceipt")}
                     </>
                   )}
                 </button>
                 <Link to="/products" className="btn btn-primary">
                   <i className="fas fa-shopping-bag me-2"></i>
-                  Continue Shopping
+                  {t("orders.continueShopping")}
                 </Link>
                 <Link to="/profile" className="btn btn-outline-primary">
                   <i className="fas fa-user me-2"></i>
-                  View Profile
+                  {t("orders.viewProfile")}
                 </Link>
               </div>
 
               <div className="mt-4 text-center">
                 <small className="text-muted">
                   <i className="fas fa-info-circle me-1"></i>
-                  You will receive an email confirmation shortly.
+                  {t("orders.emailConfirmation")}
                 </small>
               </div>
             </div>

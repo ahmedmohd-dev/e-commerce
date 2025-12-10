@@ -4,10 +4,11 @@ const {
   getProductBySlug,
   searchAutocomplete,
 } = require("../controllers/product.controller");
+const optionalAuth = require("../middleware/optionalAuth");
 
 const router = express.Router();
 
-router.get("/", listProducts);
+router.get("/", optionalAuth, listProducts);
 router.get("/search/autocomplete", searchAutocomplete);
 router.get("/:slug", getProductBySlug);
 

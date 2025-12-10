@@ -2,13 +2,24 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import http from "../api/http";
 import { fetchCategories } from "../api/categoryApi";
 import { fetchBrands } from "../api/brandApi";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoritesContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import useAddToCartAnimation from "../hooks/useAddToCartAnimation";
+import "../components/AddToCartAnimation.css";
 
 export default function Products() {
+  const { t } = useLanguage();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [data, setData] = useState({ items: [], total: 0, page: 1, pages: 1 });
+  const [data, setData] = useState({
+    items: [],
+    total: 0,
+    page: 1,
+    pages: 1,
+    context: null,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -28,6 +39,7 @@ export default function Products() {
   // Options
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [brandOptions, setBrandOptions] = useState([]);
+  const triggerAddToCartAnimation = useAddToCartAnimation();
 
   // Applied query (changes only on Apply/Enter/pagination)
   const [appliedQuery, setAppliedQuery] = useState({
@@ -45,6 +57,53 @@ export default function Products() {
 
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
+  const isSaleActive = (sale) => {
+    if (!sale?.isEnabled || !sale?.price) return false;
+    const now = Date.now();
+    const start = sale.start ? new Date(sale.start).getTime() : null;
+    const end = sale.end ? new Date(sale.end).getTime() : null;
+    if (start && now < start) return false;
+    if (end && now > end) return false;
+    return true;
+  };
+  const contextContent = useMemo(() => {
+    switch (data.context?.mode) {
+      case "sale":
+        return {
+          icon: "fa-tag",
+          variant: "warning",
+          title: t("products.context.saleTitle"),
+          text: t("products.context.saleText"),
+        };
+      case "popular":
+        return {
+          icon: "fa-fire",
+          variant: "light",
+          title: t("products.context.popularTitle"),
+          text: t("products.context.popularText"),
+        };
+      case "new":
+        return {
+          icon: "fa-bolt",
+          variant: "info",
+          title: t("products.context.newTitle"),
+          text: data.context?.fallback
+            ? t("products.context.newFallbackText")
+            : t("products.context.newText"),
+        };
+      case "foryou":
+        return {
+          icon: "fa-star",
+          variant: "primary",
+          title: t("products.context.forYouTitle"),
+          text: data.context?.personalized
+            ? t("products.context.forYouText")
+            : t("products.context.forYouFallback"),
+        };
+      default:
+        return null;
+    }
+  }, [data.context, t]);
 
   // Build query params from applied query
   const queryString = useMemo(() => {
@@ -72,7 +131,13 @@ export default function Products() {
     http
       .get(`/api/products?${queryString}`)
       .then((r) => {
-        setData(r.data);
+        setData({
+          items: r.data.items || [],
+          total: r.data.total || 0,
+          page: r.data.page || 1,
+          pages: r.data.pages || 1,
+          context: r.data.context || null,
+        });
       })
       .catch(() => setError("Failed to load products"))
       .finally(() => setLoading(false));
@@ -99,6 +164,7 @@ export default function Products() {
     const urlMax = searchParams.get("maxPrice") || "";
     const urlInStock = searchParams.get("inStock") === "true";
     const urlRatingMin = Number(searchParams.get("ratingMin") || 0);
+    const urlSortParam = searchParams.get("sort") || "-createdAt";
     if (urlSearch) {
       setSearch(urlSearch);
     }
@@ -108,6 +174,7 @@ export default function Products() {
     setMaxPrice(urlMax);
     setInStockOnly(urlInStock);
     setRatingMin(urlRatingMin);
+    setSort(urlSortParam);
     setAppliedQuery((prev) => ({
       ...prev,
       search: urlSearch || "",
@@ -117,6 +184,7 @@ export default function Products() {
       maxPrice: urlMax,
       inStockOnly: urlInStock,
       ratingMin: urlRatingMin,
+      sort: urlSortParam,
       page: 1,
     }));
   }, []);
@@ -126,6 +194,18 @@ export default function Products() {
     const params = new URLSearchParams(queryString);
     setSearchParams(params, { replace: true });
   }, [queryString]);
+
+  useEffect(() => {
+    const urlSortParam = searchParams.get("sort") || "-createdAt";
+    if (urlSortParam !== appliedQuery.sort) {
+      setSort(urlSortParam);
+      setAppliedQuery((prev) => ({
+        ...prev,
+        sort: urlSortParam,
+        page: 1,
+      }));
+    }
+  }, [searchParams, appliedQuery.sort]);
 
   // Record scroll position when filters open
   useEffect(() => {
@@ -188,39 +268,34 @@ export default function Products() {
     });
   };
 
-  const handleAddToCart = (product) => {
-    addToCart(product, 1);
+  const handleAddToCart = (product, salePrice, imageElement) => {
+    const payload =
+      salePrice != null ? { ...product, price: Number(salePrice) } : product;
+    addToCart(payload, 1);
+    if (imageElement) {
+      triggerAddToCartAnimation(imageElement);
+    }
   };
 
   return (
     <div className="container mt-4">
-      <div className="row mb-4">
-        <div className="col">
-          <div className="hero-gradient">
-            <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-              <div>
-                <h1 className="hero-title display-6 mb-1">Our Products</h1>
-                <p className="hero-subtitle mb-0">
-                  Discover our amazing collection
-                </p>
-              </div>
-              <div className="d-none d-md-flex align-items-center gap-2">
-                <span className="chip">
-                  <i className="fas fa-truck"></i> Fast Shipping
-                </span>
-                <span className="chip">
-                  <i className="fas fa-shield-alt"></i> Secure
-                </span>
-                <span className="chip">
-                  <i className="fas fa-undo"></i> Easy Returns
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      <button
+        type="button"
+        className="btn btn-light btn-sm mb-3"
+        onClick={() => navigate(-1)}
+      >
+        <i className="fas fa-arrow-left me-1"></i>
+        Back
+      </button>
       {/* Top controls: search + filter toggle */}
+      {contextContent && (
+        <div
+          className={`alert alert-${contextContent.variant} border-0 shadow-sm mb-3`}
+        >
+          <i className={`fas ${contextContent.icon} me-2`}></i>
+          <strong>{contextContent.title}</strong> {contextContent.text}
+        </div>
+      )}
       <div className="card border-0 shadow-sm mb-3">
         <div className="card-body">
           <div className="row g-2 align-items-stretch">
@@ -230,7 +305,7 @@ export default function Products() {
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Search products..."
+                  placeholder={t("products.searchPlaceholder")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => {
@@ -248,7 +323,9 @@ export default function Products() {
                 aria-controls="advanced-filters"
               >
                 <i className="fas fa-sliders-h me-2"></i>
-                {showFilters ? "Hide Filters" : "Filters"}
+                {showFilters
+                  ? t("products.hideFilters")
+                  : t("products.filters")}
               </button>
             </div>
           </div>
@@ -264,13 +341,13 @@ export default function Products() {
           <div className="card-body">
             <div className="row g-3 align-items-end">
               <div className="col-12 col-md-4 d-none">
-                <label className="form-label">Search</label>
+                <label className="form-label">{t("common.search")}</label>
                 <div className="input-with-icon">
                   <i className="fas fa-search icon"></i>
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Search products..."
+                    placeholder={t("products.searchPlaceholder")}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     onKeyDown={(e) => {
@@ -320,7 +397,7 @@ export default function Products() {
                     onChange={(e) => setInStockOnly(e.target.checked)}
                   />
                   <label className="form-check-label" htmlFor="inStockOnly">
-                    In stock only
+                    {t("products.inStockOnly")}
                   </label>
                 </div>
               </div>
@@ -422,22 +499,25 @@ export default function Products() {
                 </div>
               </div>
               <div className="col-6 col-md-2">
-                <label className="form-label">Sort</label>
+                <label className="form-label">{t("products.sort")}</label>
                 <select
                   className="form-select"
                   value={sort}
                   onChange={(e) => setSort(e.target.value)}
                 >
-                  <option value="-createdAt">Newest</option>
-                  <option value="createdAt">Oldest</option>
-                  <option value="price">Price: Low to High</option>
-                  <option value="-price">Price: High to Low</option>
-                  <option value="name">Name: A-Z</option>
-                  <option value="-name">Name: Z-A</option>
+                  <option value="-createdAt">{t("products.sortNewest")}</option>
+                  <option value="createdAt">{t("products.sortOldest")}</option>
+                  <option value="price">{t("products.sortPriceLow")}</option>
+                  <option value="-price">{t("products.sortPriceHigh")}</option>
+                  <option value="name">{t("products.sortNameAsc")}</option>
+                  <option value="-name">{t("products.sortNameDesc")}</option>
+                  <option value="popular">{t("products.sortPopular")}</option>
+                  <option value="sale">{t("products.sortSale")}</option>
+                  <option value="foryou">{t("products.sortForYou")}</option>
                 </select>
               </div>
               <div className="col-6 col-md-2">
-                <label className="form-label">Per Page</label>
+                <label className="form-label">{t("products.perPage")}</label>
                 <select
                   className="form-select"
                   value={limit}
@@ -454,7 +534,7 @@ export default function Products() {
                   className="btn btn-outline-secondary"
                   onClick={resetFilters}
                 >
-                  Clear
+                  {t("common.clear")}
                 </button>
                 <button
                   className="btn btn-primary"
@@ -463,7 +543,7 @@ export default function Products() {
                     setShowFilters(false);
                   }}
                 >
-                  Apply
+                  {t("common.apply")}
                 </button>
               </div>
             </div>
@@ -483,85 +563,150 @@ export default function Products() {
       )}
 
       <div className="row">
-        {data.items.map((p) => (
-          <div key={p._id} className="col-6 col-md-4 col-lg-3 mb-4">
-            <div className="card h-100 shadow-sm border-0 product-card">
-              <div className="position-relative">
-                <img
-                  src={p.images?.[0]}
-                  className="card-img-top product-img-cover"
-                  alt={p.name}
-                />
-                <div className="position-absolute top-0 end-0 m-2">
-                  <span className="badge badge-orange">In Stock</span>
-                </div>
-                <div className="position-absolute top-0 start-0 m-2">
-                  <button
-                    className={`btn btn-sm rounded-circle ${
-                      isFavorite(p._id) ? "btn-danger" : "btn-outline-danger"
-                    }`}
-                    onClick={() => toggleFavorite(p)}
-                    title={
-                      isFavorite(p._id)
-                        ? "Remove from favorites"
-                        : "Add to favorites"
-                    }
-                  >
-                    <i className="fas fa-heart"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="card-body d-flex flex-column">
-                <h6 className="card-title fw-bold line-clamp-2">{p.name}</h6>
-                <p className="card-text text-muted small line-clamp-3">
-                  {p.description}
-                </p>
-                <div className="mt-auto">
-                  <div className="mb-2">
-                    {p.rating > 0 ? (
-                      <div className="d-flex align-items-center gap-1 mb-1">
-                        <div className="text-warning">
-                          {Array.from({ length: 5 }, (_, i) => (
-                            <i
-                              key={i}
-                              className={`fas fa-star ${
-                                i < Math.floor(p.rating) ? "" : "opacity-50"
-                              }`}
-                              style={{ fontSize: "0.8rem" }}
-                            ></i>
-                          ))}
-                        </div>
-                        <small className="text-muted">
-                          {p.rating.toFixed(1)} ({p.numReviews || 0})
-                        </small>
-                      </div>
-                    ) : (
-                      <small className="text-muted">No ratings yet</small>
+        {data.items.map((p) => {
+          const saleActive = isSaleActive(p.sale);
+          const saleBadge = saleActive
+            ? p.sale?.badgeText?.trim() || t("products.saleBadgeShort")
+            : null;
+          const displayPrice = saleActive ? p.sale?.price : p.price;
+          const formattedDisplayPrice = Number(
+            displayPrice || 0
+          ).toLocaleString();
+          const formattedOriginalPrice = Number(p.price || 0).toLocaleString();
+          const discountPercent =
+            saleActive && p.sale?.discountPercent
+              ? p.sale.discountPercent
+              : null;
+
+          return (
+            <div key={p._id || p.slug} className="col-6 col-md-4 col-lg-3 mb-3">
+              <div className="card h-100 shadow-sm border-0 product-card">
+                <div className="position-relative">
+                  <img
+                    src={p.images?.[0]}
+                    className="card-img-top product-img-cover"
+                    alt={p.name}
+                  />
+                  <div className="position-absolute top-0 end-0 m-2 d-flex flex-column align-items-end gap-2">
+                    {saleBadge && (
+                      <span className="badge bg-danger text-white shadow-sm">
+                        {saleBadge}
+                      </span>
                     )}
                   </div>
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="h5 text-primary mb-0">
-                      ETB {p.price.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="d-grid gap-2">
-                    <Link className="btn btn-orange" to={`/product/${p.slug}`}>
-                      <i className="fas fa-eye me-1"></i>
-                      View Details
-                    </Link>
+                  <div className="position-absolute top-0 start-0 m-2 d-flex flex-column gap-2">
                     <button
-                      className="btn btn-orange-outline"
-                      onClick={() => handleAddToCart(p)}
+                      className={`btn btn-sm rounded-circle ${
+                        isFavorite(p._id) ? "btn-danger" : "btn-outline-danger"
+                      }`}
+                      onClick={(e) => {
+                        const wasFavorite = isFavorite(p._id);
+                        toggleFavorite(p);
+                        if (!wasFavorite) {
+                          const card = e.currentTarget.closest(".product-card");
+                          const imgEl =
+                            card?.querySelector(".product-img-cover") || null;
+                          if (imgEl) {
+                            triggerAddToCartAnimation(imgEl, {
+                              targetSelector: ".mega-favorites-icon",
+                              mobileTargetSelector:
+                                ".mega-mobile-favorites-icon",
+                              pulseClass: "favorites-icon-pulse",
+                            });
+                          }
+                        }
+                      }}
+                      title={
+                        isFavorite(p._id)
+                          ? t("products.removeFromFavorites")
+                          : t("products.addToFavorites")
+                      }
                     >
-                      <i className="fas fa-shopping-cart me-1"></i>
-                      Add to Cart
+                      <i className="fas fa-heart"></i>
                     </button>
+                  </div>
+                </div>
+                <div className="card-body d-flex flex-column">
+                  <h6 className="card-title fw-bold line-clamp-2">{p.name}</h6>
+                  <div className="mt-auto">
+                    {p.numReviews > 0 && p.rating > 0 && (
+                      <div className="mb-2">
+                        <div className="d-flex align-items-center gap-1">
+                          <div className="text-warning">
+                            {Array.from({ length: 5 }, (_, i) => (
+                              <i
+                                key={i}
+                                className={`fas fa-star ${
+                                  i < Math.floor(p.rating) ? "" : "opacity-50"
+                                }`}
+                                style={{ fontSize: "0.8rem" }}
+                              ></i>
+                            ))}
+                          </div>
+                          <small className="text-muted">
+                            {p.rating.toFixed(1)} ({p.numReviews || 0})
+                          </small>
+                        </div>
+                      </div>
+                    )}
+                    <div className="mb-2">
+                      {saleActive ? (
+                        <>
+                          <div className="text-muted text-decoration-line-through small mb-1">
+                            ETB {formattedOriginalPrice}
+                          </div>
+                          <div
+                            className="fw-bold text-danger"
+                            style={{ fontSize: "1rem" }}
+                          >
+                            ETB {formattedDisplayPrice}
+                            {discountPercent ? (
+                              <span
+                                className="badge bg-danger-subtle text-danger ms-2"
+                                style={{ fontSize: "0.7rem" }}
+                              >
+                                -{discountPercent}%
+                              </span>
+                            ) : null}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="fw-bold" style={{ fontSize: "1rem" }}>
+                          ETB {formattedDisplayPrice}
+                        </div>
+                      )}
+                    </div>
+                    <div className="d-grid">
+                      <Link
+                        className="btn btn-orange btn-sm"
+                        to={`/product/${p.slug}`}
+                      >
+                        <i className="fas fa-eye me-1"></i>
+                        {t("products.viewDetails")}
+                      </Link>
+                      <button
+                        className="btn btn-orange-outline"
+                        onClick={(e) => {
+                          const card = e.currentTarget.closest(".product-card");
+                          const imgEl =
+                            card?.querySelector(".product-img-cover") || null;
+                          handleAddToCart(
+                            p,
+                            saleActive ? p.sale?.price : null,
+                            imgEl
+                          );
+                        }}
+                      >
+                        <i className="fas fa-shopping-cart me-1"></i>
+                        {t("products.addToCart")}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Pagination */}

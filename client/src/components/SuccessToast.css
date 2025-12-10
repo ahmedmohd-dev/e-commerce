@@ -1,0 +1,139 @@
+.success-toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 10000;
+  min-width: 300px;
+  max-width: 400px;
+  opacity: 0;
+  transform: translateX(400px);
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  pointer-events: none;
+}
+
+.success-toast.show {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: all;
+}
+
+.success-toast.hide {
+  opacity: 0;
+  transform: translateX(400px);
+}
+
+.success-toast__content {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-left: 4px solid #10b981;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.success-toast__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  animation: iconBounce 0.5s ease-out;
+}
+
+@keyframes iconBounce {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+.success-toast__message {
+  flex: 1;
+}
+
+.success-toast__message strong {
+  color: #1f2937;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.success-toast__close {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.success-toast__close:hover {
+  color: #1f2937;
+}
+
+[data-theme="dark"] .success-toast__content {
+  background: #1f2937;
+  border-left-color: #10b981;
+}
+
+[data-theme="dark"] .success-toast__message strong {
+  color: #f9fafb;
+}
+
+[data-theme="dark"] .success-toast__close {
+  color: #9ca3af;
+}
+
+[data-theme="dark"] .success-toast__close:hover {
+  color: #f9fafb;
+}
+
+@media (max-width: 768px) {
+  .success-toast {
+    bottom: 1rem;
+    right: 1rem;
+    left: 1rem;
+    min-width: auto;
+    max-width: none;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

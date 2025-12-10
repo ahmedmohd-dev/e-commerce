@@ -1,18 +1,24 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import http from "../api/http";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import { useFavorites } from "../contexts/FavoritesContext";
+import useAddToCartAnimation from "../hooks/useAddToCartAnimation";
+import "../components/AddToCartAnimation.css";
 import ProductReviews from "../components/ProductReviews";
+import { getEffectivePrice, isSaleActive, formatETB } from "../utils/pricing";
 
 export default function ProductDetails() {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const [p, setP] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
+  const triggerAddToCartAnimation = useAddToCartAnimation();
+  const imageRef = useRef(null);
 
   const refreshProduct = () => {
     http.get("/api/products/" + slug).then((r) => {
@@ -43,6 +49,9 @@ export default function ProductDetails() {
 
   const handleAddToCart = () => {
     addToCart(p, quantity);
+    if (imageRef.current) {
+      triggerAddToCartAnimation(imageRef.current);
+    }
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   };
@@ -66,18 +75,41 @@ export default function ProductDetails() {
       </div>
     );
 
+  const saleActive = isSaleActive(p);
+  const finalPrice = getEffectivePrice(p);
+  const discountPercent =
+    saleActive && p.sale?.discountPercent
+      ? p.sale.discountPercent
+      : saleActive && p.price
+      ? Math.round(((p.price - finalPrice) / p.price) * 100)
+      : 0;
+
   return (
     <div className="container mt-4">
+      <button
+        type="button"
+        className="btn btn-light btn-sm mb-3"
+        onClick={() => navigate(-1)}
+      >
+        <i className="fas fa-arrow-left me-1"></i>
+        Back
+      </button>
       <div className="row">
         <div className="col-md-6">
           <div className="position-relative">
             <img
+              ref={imageRef}
               src={p.images?.[0]}
               className="img-fluid rounded shadow"
               alt={p.name}
               style={{ width: "100%", height: "400px", objectFit: "cover" }}
             />
             <div className="position-absolute top-0 end-0 m-3">
+              {saleActive && (
+                <span className="badge bg-warning text-dark me-2">
+                  {p.sale?.badgeText || "Limited Deal"}
+                </span>
+              )}
               <span className="badge bg-success fs-6">In Stock</span>
             </div>
           </div>
@@ -97,11 +129,21 @@ export default function ProductDetails() {
             </div>
             <p className="lead text-muted mb-4">{p.description}</p>
 
-            <div className="mb-4">
-              <span className="display-4 fw-bold text-primary">
-                ETB {p.price.toLocaleString()}
+            <div className="mb-4 d-flex flex-wrap align-items-center gap-3">
+              {saleActive && (
+                <span className="fs-4 text-muted text-decoration-line-through">
+                  {formatETB(p.price)}
+                </span>
+              )}
+              <span className="display-5 fw-bold text-primary">
+                {formatETB(finalPrice)}
               </span>
-              <span className="text-muted ms-2">Free shipping</span>
+              {saleActive && discountPercent > 0 && (
+                <span className="badge bg-danger fw-semibold">
+                  -{discountPercent}%
+                </span>
+              )}
+              <span className="text-muted">Free shipping</span>
             </div>
 
             <div className="row mb-4">
@@ -152,7 +194,25 @@ export default function ProductDetails() {
                 className={`btn btn-lg ${
                   isFavorite(p?._id) ? "btn-danger" : "btn-outline-primary"
                 }`}
-                onClick={() => p && toggleFavorite(p)}
+                onClick={(e) => {
+                  if (p) {
+                    const wasFavorite = isFavorite(p._id);
+                    toggleFavorite(p);
+                    if (!wasFavorite) {
+                      const card = e.currentTarget
+                        .closest(".container")
+                        ?.querySelector("img.img-fluid.rounded.shadow");
+                      const imgEl = card || imageRef.current;
+                      if (imgEl) {
+                        triggerAddToCartAnimation(imgEl, {
+                          targetSelector: ".mega-favorites-icon",
+                          mobileTargetSelector: ".mega-mobile-favorites-icon",
+                          pulseClass: "favorites-icon-pulse",
+                        });
+                      }
+                    }
+                  }
+                }}
               >
                 <i
                   className={`fas ${

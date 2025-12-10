@@ -12,6 +12,49 @@ const {
   extractSellerIdsFromOrder,
 } = require("../services/notification.service");
 
+const EMPTY_SALE = {
+  isEnabled: false,
+  price: null,
+  start: null,
+  end: null,
+  badgeText: "",
+  discountPercent: 0,
+};
+
+function normalizeSalePayload(input, basePrice) {
+  if (!input || !basePrice || Number(basePrice) <= 0) {
+    return { ...EMPTY_SALE };
+  }
+  const enabled =
+    input.isEnabled === true ||
+    input.isEnabled === "true" ||
+    input.isEnabled === 1;
+  const salePrice = Number(input.price);
+  if (!enabled || !salePrice || salePrice >= Number(basePrice)) {
+    return { ...EMPTY_SALE };
+  }
+  const start = input.start ? new Date(input.start) : null;
+  const end = input.end ? new Date(input.end) : null;
+  const discountPercent = Math.max(
+    1,
+    Math.min(
+      95,
+      Math.round(((Number(basePrice) - salePrice) / Number(basePrice)) * 100)
+    )
+  );
+  return {
+    isEnabled: true,
+    price: salePrice,
+    start,
+    end,
+    badgeText:
+      typeof input.badgeText === "string" && input.badgeText.trim()
+        ? input.badgeText.trim().slice(0, 40)
+        : "Sale",
+    discountPercent,
+  };
+}
+
 exports.applyForSeller = async (req, res) => {
   try {
     const { shopName = "", phone = "", description = "" } = req.body || {};
@@ -69,6 +112,13 @@ exports.createMyProduct = async (req, res) => {
   try {
     const payload = req.body || {};
     payload.seller = req.user._id;
+    if (payload.price != null) {
+      payload.price = Number(payload.price);
+    }
+    if (payload.stock != null) {
+      payload.stock = Number(payload.stock);
+    }
+    payload.sale = normalizeSalePayload(payload.sale, payload.price);
     const created = await Product.create(payload);
     return res.status(201).json(created);
   } catch (e) {
@@ -94,8 +144,17 @@ exports.updateMyProduct = async (req, res) => {
     ];
     for (const key of updatable) {
       if (key in req.body) {
-        product[key] = req.body[key];
+        if (key === "price" || key === "stock") {
+          product[key] = Number(req.body[key]);
+        } else {
+          product[key] = req.body[key];
+        }
       }
+    }
+    if ("sale" in req.body) {
+      const basePrice =
+        req.body.price != null ? Number(req.body.price) : product.price;
+      product.sale = normalizeSalePayload(req.body.sale, basePrice);
     }
     await product.save();
     return res.json(product);

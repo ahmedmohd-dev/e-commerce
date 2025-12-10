@@ -10,3 +10,19 @@ Infrastructure was already generic (each notification has type, title, body, lin
 Orders:
 Buyer gets order:placed, order:status, order:verified.
 Seller gets order:new, order:status-admin, order:verified, order:seller-progress.
+Translation Updates
+Expanded the orders dictionary with every label used in confirmation/tracking flows (status text, CTAs, payment labels, error messages) for both English and Amharic, so future pages can reuse the same keys instead of hard‑coding strings. orders: {
+orderId: "Order ID",
+orderNumber: "Order Number",
+orderNumberShort: "Order #",
+...,
+timeline: {
+orderPlaced: "Order Placed",
+paymentVerified: "Payment Verified",
+...
+},
+paymentMethods: {
+telebirr: "Telebirr",
+paypal: "PayPal",
+},
+},

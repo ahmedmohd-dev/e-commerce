@@ -553,3 +553,98 @@ exports.sendDisputeUpdate = async (
   );
   return await sendEmail(buyerEmail, subject, html);
 };
+
+// Welcome email template
+const getWelcomeEmailTemplate = (user) => {
+  return {
+    subject: "Welcome to MegaMart! 🎉",
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #f97316 0%, #f59e0b 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+          .welcome-card { background: white; padding: 25px; margin: 20px 0; border-radius: 8px; text-align: center; }
+          .features { background: white; padding: 20px; margin: 15px 0; border-radius: 8px; }
+          .feature-item { padding: 10px 0; border-bottom: 1px solid #eee; }
+          .feature-item:last-child { border-bottom: none; }
+          .feature-icon { color: #f97316; margin-right: 10px; }
+          .button { display: inline-block; padding: 14px 28px; background: #f97316; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: 600; }
+          .button:hover { background: #ea580c; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin: 0; font-size: 2.5rem;">🛍️ MegaMart</h1>
+            <h2 style="margin: 10px 0 0 0;">Welcome Aboard!</h2>
+          </div>
+          <div class="content">
+            <div class="welcome-card">
+              <h2 style="color: #1f2937; margin-top: 0;">Hello ${
+                user.displayName || "there"
+              }! 👋</h2>
+              <p style="font-size: 1.1rem; color: #4b5563;">
+                Thank you for joining MegaMart! We're thrilled to have you as part of our community.
+              </p>
+            </div>
+            
+            <div class="features">
+              <h3 style="color: #1f2937; margin-top: 0;">What you can do:</h3>
+              <div class="feature-item">
+                <span class="feature-icon">🛒</span>
+                <strong>Shop thousands of products</strong> - Browse our wide selection of quality items
+              </div>
+              <div class="feature-item">
+                <span class="feature-icon">🚚</span>
+                <strong>Fast & Free Shipping</strong> - On orders over ETB 500
+              </div>
+              <div class="feature-item">
+                <span class="feature-icon">💳</span>
+                <strong>Secure Payments</strong> - Multiple payment options available
+              </div>
+              <div class="feature-item">
+                <span class="feature-icon">⭐</span>
+                <strong>Exclusive Deals</strong> - Get access to special offers and discounts
+              </div>
+              <div class="feature-item">
+                <span class="feature-icon">🔄</span>
+                <strong>Easy Returns</strong> - 30-day return policy, no questions asked
+              </div>
+            </div>
+            
+            <p style="text-align: center; margin-top: 25px;">
+              Ready to start shopping? Explore our amazing collection of products!
+            </p>
+            
+            <div style="text-align: center;">
+              <a href="${
+                process.env.CLIENT_URL || "http://localhost:5173"
+              }/products" class="button">Start Shopping Now</a>
+            </div>
+            
+            <p style="margin-top: 30px; color: #6b7280; font-size: 14px; text-align: center;">
+              If you have any questions, feel free to contact us at 
+              <a href="mailto:support@megamart.com" style="color: #f97316;">support@megamart.com</a>
+            </p>
+            
+            <p style="margin-top: 20px; color: #9ca3af; font-size: 12px; text-align: center;">
+              Happy Shopping!<br>
+              The MegaMart Team
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  };
+};
+
+// Send welcome email
+exports.sendWelcomeEmail = async (user) => {
+  const { subject, html } = getWelcomeEmailTemplate(user);
+  return await sendEmail(user.email, subject, html);
+};

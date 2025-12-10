@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useReducer, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useState,
+} from "react";
+import { getEffectivePrice } from "../utils/pricing";
 
 const CartContext = createContext();
 
@@ -78,6 +85,10 @@ const initialState = {
 // Cart provider component
 export function CartProvider({ children }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
+  const [toastState, setToastState] = useState({
+    show: false,
+    productName: "",
+  });
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -103,6 +114,8 @@ export function CartProvider({ children }) {
       type: CART_ACTIONS.ADD_TO_CART,
       payload: { product, quantity },
     });
+    // Show toast notification
+    setToastState({ show: true, productName: product.name || "Item" });
   };
 
   const removeFromCart = (productId) => {
@@ -130,7 +143,7 @@ export function CartProvider({ children }) {
 
   const getTotalPrice = () => {
     return state.items.reduce(
-      (total, item) => total + item.product.price * item.quantity,
+      (total, item) => total + getEffectivePrice(item.product) * item.quantity,
       0
     );
   };
@@ -143,6 +156,8 @@ export function CartProvider({ children }) {
     clearCart,
     getTotalItems,
     getTotalPrice,
+    toastState,
+    setToastState,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
@@ -156,5 +171,3 @@ export function useCart() {
   }
   return context;
 }
-
-

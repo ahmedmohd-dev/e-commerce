@@ -42,7 +42,7 @@ export default function SellerDashboard() {
     pages: 1,
     total: 0,
   });
-  const [form, setForm] = useState({
+  const createBlankForm = () => ({
     name: "",
     slug: "",
     price: 0,
@@ -52,7 +52,13 @@ export default function SellerDashboard() {
     brand: "",
     stock: 0,
     isActive: true,
+    saleEnabled: false,
+    salePrice: "",
+    saleStart: "",
+    saleEnd: "",
+    saleBadge: "",
   });
+  const [form, setForm] = useState(createBlankForm);
   const [editId, setEditId] = useState(null);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -71,6 +77,28 @@ export default function SellerDashboard() {
   const [loadingThreads, setLoadingThreads] = useState(false);
   const formRef = React.useRef(null);
   const canManage = role === "seller" && sellerStatus === "approved";
+
+  const toDateInputValue = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const tzOffset = date.getTimezoneOffset();
+    const local = new Date(date.getTime() - tzOffset * 60000);
+    return local.toISOString().slice(0, 16);
+  };
+
+  const buildSalePayload = () => {
+    if (!form.saleEnabled || !form.salePrice) {
+      return { isEnabled: false };
+    }
+    return {
+      isEnabled: true,
+      price: Number(form.salePrice),
+      start: form.saleStart ? new Date(form.saleStart).toISOString() : null,
+      end: form.saleEnd ? new Date(form.saleEnd).toISOString() : null,
+      badgeText: form.saleBadge || "Sale",
+    };
+  };
 
   const load = async (p = 1) => {
     setBusy(true);
@@ -193,6 +221,11 @@ export default function SellerDashboard() {
       brand: p.brand || "",
       stock: p.stock || 0,
       isActive: p.isActive !== false,
+      saleEnabled: !!p.sale?.isEnabled,
+      salePrice: p.sale?.price ? String(p.sale.price) : "",
+      saleStart: p.sale?.start ? toDateInputValue(p.sale.start) : "",
+      saleEnd: p.sale?.end ? toDateInputValue(p.sale.end) : "",
+      saleBadge: p.sale?.badgeText || "",
     });
     // Scroll to form
     setTimeout(() => {
@@ -202,17 +235,7 @@ export default function SellerDashboard() {
 
   const onReset = () => {
     setEditId(null);
-    setForm({
-      name: "",
-      slug: "",
-      price: 0,
-      description: "",
-      imagesText: "",
-      category: "",
-      brand: "",
-      stock: 0,
-      isActive: true,
-    });
+    setForm(createBlankForm());
     setSelectedFiles([]);
   };
 
@@ -233,6 +256,7 @@ export default function SellerDashboard() {
         category: form.category,
         brand: form.brand,
         isActive: form.isActive,
+        sale: buildSalePayload(),
       };
       if (editId) {
         await updateMyProduct(editId, payload);
@@ -821,7 +845,7 @@ export default function SellerDashboard() {
               <div className="col-12">
                 <input
                   className="form-control"
-                  placeholder="Images (comma-separated URLs)"
+                  placeholder="Images "
                   value={form.imagesText}
                   onChange={(e) =>
                     setForm({ ...form, imagesText: e.target.value })
@@ -912,6 +936,83 @@ export default function SellerDashboard() {
                     setForm({ ...form, description: e.target.value })
                   }
                 />
+              </div>
+              <div className="col-12">
+                <div className="p-3 bg-light rounded border">
+                  <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <div>
+                      <strong>Sale & Promotions</strong>
+                      <p className="text-muted small mb-0">
+                        Highlight limited-time deals with an automatic badge and
+                        discounted price.
+                      </p>
+                    </div>
+                    <div className="form-check form-switch">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="saleEnabled"
+                        checked={form.saleEnabled}
+                        onChange={(e) =>
+                          setForm({ ...form, saleEnabled: e.target.checked })
+                        }
+                      />
+                      <label className="form-check-label" htmlFor="saleEnabled">
+                        Enable sale
+                      </label>
+                    </div>
+                  </div>
+                  {form.saleEnabled && (
+                    <div className="row g-3">
+                      <div className="col-6 col-md-3">
+                        <label className="form-label">Sale Price (ETB)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="form-control"
+                          value={form.salePrice}
+                          onChange={(e) =>
+                            setForm({ ...form, salePrice: e.target.value })
+                          }
+                          placeholder="e.g. 499"
+                        />
+                      </div>
+                      <div className="col-6 col-md-3">
+                        <label className="form-label">Badge Text</label>
+                        <input
+                          className="form-control"
+                          value={form.saleBadge}
+                          onChange={(e) =>
+                            setForm({ ...form, saleBadge: e.target.value })
+                          }
+                          placeholder="Limited deal"
+                        />
+                      </div>
+                      <div className="col-12 col-md-3">
+                        <label className="form-label">Starts</label>
+                        <input
+                          type="datetime-local"
+                          className="form-control"
+                          value={form.saleStart}
+                          onChange={(e) =>
+                            setForm({ ...form, saleStart: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="col-12 col-md-3">
+                        <label className="form-label">Ends</label>
+                        <input
+                          type="datetime-local"
+                          className="form-control"
+                          value={form.saleEnd}
+                          onChange={(e) =>
+                            setForm({ ...form, saleEnd: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="col-12 col-md-auto ms-md-auto d-flex gap-2">
                 {editId && (

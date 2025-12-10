@@ -1,19 +1,31 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useFavorites } from "../contexts/FavoritesContext";
 import { useCart } from "../contexts/CartContext";
+import useAddToCartAnimation from "../hooks/useAddToCartAnimation";
+import "../components/AddToCartAnimation.css";
 
 export default function Favorites() {
   const { items, removeFromFavorites, clearFavorites } = useFavorites();
+  const navigate = useNavigate();
   const { addToCart } = useCart();
+  const triggerAddToCartAnimation = useAddToCartAnimation();
 
   if (items.length === 0) {
     return (
-      <div className="container mt-5">
+      <div className="container mt-5 page-bottom-gap">
         <div className="row justify-content-center">
           <div className="col-md-6 text-center">
             <div className="card border-0 shadow-sm">
               <div className="card-body py-5">
+                <button
+                  type="button"
+                  className="btn btn-light btn-sm mb-3"
+                  onClick={() => navigate(-1)}
+                >
+                  <i className="fas fa-arrow-left me-1"></i>
+                  Back
+                </button>
                 <i className="fas fa-heart fa-4x text-muted mb-4"></i>
                 <h3 className="text-muted">No favorites yet</h3>
                 <p className="text-muted mb-4">
@@ -33,7 +45,15 @@ export default function Favorites() {
   }
 
   return (
-    <div className="container mt-4">
+    <div className="container mt-4 page-bottom-gap">
+      <button
+        type="button"
+        className="btn btn-light btn-sm mb-3"
+        onClick={() => navigate(-1)}
+      >
+        <i className="fas fa-arrow-left me-1"></i>
+        Back
+      </button>
       <div className="row">
         <div className="col-12">
           <div className="d-flex justify-content-between align-items-center mb-4">
@@ -83,13 +103,27 @@ export default function Favorites() {
                     <span className="h5 text-primary mb-0">
                       ${product.price}
                     </span>
-                    <div className="text-warning">
-                      <i className="fas fa-star"></i>
-                      <i className="fas fa-star"></i>
-                      <i className="fas fa-star"></i>
-                      <i className="fas fa-star"></i>
-                      <i className="fas fa-star"></i>
-                    </div>
+                    {product.numReviews > 0 && product.rating > 0 && (
+                      <div className="d-flex align-items-center gap-1 text-warning">
+                        <div>
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <i
+                              key={i}
+                              className={`fas fa-star ${
+                                i < Math.floor(product.rating)
+                                  ? ""
+                                  : "opacity-50"
+                              }`}
+                              style={{ fontSize: "0.8rem" }}
+                            ></i>
+                          ))}
+                        </div>
+                        <small className="text-muted">
+                          {product.rating.toFixed(1)} ({product.numReviews || 0}
+                          )
+                        </small>
+                      </div>
+                    )}
                   </div>
                   <div className="d-grid gap-2">
                     <Link
@@ -101,7 +135,15 @@ export default function Favorites() {
                     </Link>
                     <button
                       className="btn btn-outline-primary"
-                      onClick={() => addToCart(product, 1)}
+                      onClick={(e) => {
+                        addToCart(product, 1);
+                        const card = e.currentTarget.closest(".product-card");
+                        const imgEl =
+                          card?.querySelector(".card-img-top") || null;
+                        if (imgEl) {
+                          triggerAddToCartAnimation(imgEl);
+                        }
+                      }}
                     >
                       <i className="fas fa-shopping-cart me-1"></i>
                       Add to Cart
@@ -116,5 +158,3 @@ export default function Favorites() {
     </div>
   );
 }
-
-

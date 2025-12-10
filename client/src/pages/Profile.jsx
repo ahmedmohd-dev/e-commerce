@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { getUserOrders } from "../api/orderApi";
 import { Link } from "react-router-dom";
 
 const Profile = () => {
   const { user, profile } = useAuth();
+  const { t } = useLanguage();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -81,10 +83,10 @@ const Profile = () => {
         <div className="row justify-content-center">
           <div className="col-md-6">
             <div className="alert alert-warning text-center">
-              <h4>🔒 Authentication Required</h4>
-              <p>Please log in to view your profile.</p>
+              <h4>🔒 {t("profile.authenticationRequired")}</h4>
+              <p>{t("profile.pleaseLogin")}</p>
               <Link to="/login" className="btn btn-primary">
-                Go to Login
+                {t("profile.goToLogin")}
               </Link>
             </div>
           </div>
@@ -107,7 +109,7 @@ const Profile = () => {
                       <i className="fas fa-user"></i>
                     </div>
                     <div>
-                      <h2 className="mb-1">👋 Welcome back!</h2>
+                      <h2 className="mb-1">👋 {t("profile.welcomeBack")}</h2>
                       <p className="text-muted mb-0">
                         {profile?.displayName ||
                           user.email?.split("@")[0] ||
@@ -183,7 +185,7 @@ const Profile = () => {
                 <i className="fas fa-shopping-bag fa-2x"></i>
               </div>
               <h4 className="mb-1">{orders.length}</h4>
-              <p className="text-muted mb-0">Total Orders</p>
+              <p className="text-muted mb-0">{t("profile.totalOrders")}</p>
             </div>
           </div>
         </div>
@@ -238,7 +240,7 @@ const Profile = () => {
                   )
                   .toLocaleString()}
               </h4>
-              <p className="text-muted mb-0">Total Spent</p>
+              <p className="text-muted mb-0">{t("profile.totalSpent")}</p>
             </div>
           </div>
         </div>
@@ -249,7 +251,7 @@ const Profile = () => {
         <div className="col-12">
           <div className="card border-0 shadow-sm">
             <div className="card-header bg-white border-0">
-              <h4 className="mb-0">📦 Order History</h4>
+              <h4 className="mb-0">📦 {t("profile.orderHistory")}</h4>
             </div>
             <div className="card-body">
               {loading ? (
@@ -269,7 +271,7 @@ const Profile = () => {
                   <div className="text-muted mb-3">
                     <i className="fas fa-shopping-bag fa-3x"></i>
                   </div>
-                  <h5>No orders yet</h5>
+                  <h5>{t("profile.noOrders")}</h5>
                   <p className="text-muted">
                     Start shopping to see your orders here!
                   </p>
@@ -283,13 +285,13 @@ const Profile = () => {
                   <table className="table table-hover">
                     <thead className="table-light">
                       <tr>
-                        <th>Order ID</th>
-                        <th>Date</th>
-                        <th>Items</th>
-                        <th>Total</th>
-                        <th>Status</th>
-                        <th>Dispute</th>
-                        <th>Actions</th>
+                        <th>{t("orders.orderId")}</th>
+                        <th>{t("profile.date")}</th>
+                        <th>{t("common.items")}</th>
+                        <th>{t("profile.total")}</th>
+                        <th>{t("profile.status")}</th>
+                        <th>{t("disputes.title")}</th>
+                        <th>{t("common.actions")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -360,21 +362,21 @@ const Profile = () => {
                                 className="btn btn-sm btn-orange"
                               >
                                 <i className="fas fa-truck me-1"></i>
-                                Track
+                                {t("orders.trackOrder")}
                               </Link>
                               <Link
                                 to={`/order-confirmation/${order._id}`}
                                 className="btn btn-sm btn-outline-primary"
                               >
                                 <i className="fas fa-eye me-1"></i>
-                                View
+                                {t("common.view")}
                               </Link>
                               <Link
                                 to={`/orders/${order._id}/contact`}
                                 className="btn btn-sm btn-outline-secondary"
                               >
                                 <i className="fas fa-comments me-1"></i>
-                                Contact Seller
+                                {t("nav.contact")}
                               </Link>
                               {order.status !== "completed" &&
                                 order.status !== "completed" && (
@@ -383,7 +385,7 @@ const Profile = () => {
                                     className="btn btn-sm btn-outline-danger"
                                   >
                                     <i className="fas fa-exclamation-circle me-1"></i>
-                                    Raise Dispute
+                                    {t("disputes.createDispute")}
                                   </Link>
                                 )}
                             </div>
