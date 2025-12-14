@@ -41,7 +41,7 @@ export default function Login() {
           </div>
           <div className="auth-logo-container">
             <img
-              src="https://i.postimg.cc/TPzxSc0Q/login.png"
+              src="https://i.postimg.cc/q7cfb6bx/logg.png"
               alt="MegaMart Logo"
               className="auth-logo-img"
             />

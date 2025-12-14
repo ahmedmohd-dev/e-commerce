@@ -21,6 +21,7 @@ const userSchema = new mongoose.Schema(
       shopName: { type: String, default: "" },
       phone: { type: String, default: "" },
       description: { type: String, default: "" },
+      tradeLicense: { type: String, default: "" },
     },
   },
   { timestamps: true }

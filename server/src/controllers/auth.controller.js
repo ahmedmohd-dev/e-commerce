@@ -40,6 +40,7 @@ exports.register = async (req, res) => {
           shopName: sellerProfile.shopName || "",
           phone: sellerProfile.phone || "",
           description: sellerProfile.description || "",
+          tradeLicense: sellerProfile.tradeLicense || "",
         };
         await existingUser.save();
         return res.json({
@@ -75,6 +76,7 @@ exports.register = async (req, res) => {
         shopName: sellerProfile.shopName || "",
         phone: sellerProfile.phone || "",
         description: sellerProfile.description || "",
+        tradeLicense: sellerProfile.tradeLicense || "",
       };
     }
 

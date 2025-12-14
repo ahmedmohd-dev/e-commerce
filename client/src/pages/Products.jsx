@@ -516,19 +516,6 @@ export default function Products() {
                   <option value="foryou">{t("products.sortForYou")}</option>
                 </select>
               </div>
-              <div className="col-6 col-md-2">
-                <label className="form-label">{t("products.perPage")}</label>
-                <select
-                  className="form-select"
-                  value={limit}
-                  onChange={(e) => setLimit(Number(e.target.value))}
-                >
-                  <option value={8}>8</option>
-                  <option value={12}>12</option>
-                  <option value={16}>16</option>
-                  <option value={24}>24</option>
-                </select>
-              </div>
               <div className="col-12 col-md-auto ms-md-auto d-flex gap-2 justify-content-end">
                 <button
                   className="btn btn-outline-secondary"

@@ -392,6 +392,14 @@ export default function AdminDashboard() {
                       const isExpanded = expandedSellers.has(u._id);
                       const stats = sellerStats[u._id];
                       const isLoadingStats = loadingStats.has(u._id);
+                      // Debug: log seller data to check if tradeLicense is present
+                      if (isExpanded) {
+                        console.log("Seller data:", {
+                          id: u._id,
+                          sellerProfile: u.sellerProfile,
+                          tradeLicense: u.sellerProfile?.tradeLicense,
+                        });
+                      }
                       return (
                         <React.Fragment key={u._id}>
                           <tr
@@ -523,6 +531,75 @@ export default function AdminDashboard() {
                                         {new Date(
                                           u.createdAt
                                         ).toLocaleDateString()}
+                                      </div>
+                                      <div className="mb-2">
+                                        <strong>Trade License:</strong>
+                                        {u.sellerProfile?.tradeLicense ? (
+                                          <div className="mt-2">
+                                            {u.sellerProfile.tradeLicense
+                                              .toLowerCase()
+                                              .endsWith(".pdf") ||
+                                            u.sellerProfile.tradeLicense
+                                              .toLowerCase()
+                                              .includes("pdf") ? (
+                                              <a
+                                                href={
+                                                  u.sellerProfile.tradeLicense
+                                                }
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="btn btn-sm btn-outline-primary"
+                                              >
+                                                <i className="fas fa-file-pdf me-1"></i>
+                                                View PDF
+                                              </a>
+                                            ) : (
+                                              <div className="d-flex flex-column gap-2">
+                                                <img
+                                                  src={
+                                                    u.sellerProfile.tradeLicense
+                                                  }
+                                                  alt="Trade License"
+                                                  style={{
+                                                    maxWidth: "100%",
+                                                    maxHeight: "400px",
+                                                    objectFit: "contain",
+                                                    border: "1px solid #dee2e6",
+                                                    borderRadius: "8px",
+                                                    padding: "8px",
+                                                    backgroundColor: "#fff",
+                                                  }}
+                                                  className="img-fluid"
+                                                  onError={(e) => {
+                                                    console.error(
+                                                      "Failed to load trade license image:",
+                                                      u.sellerProfile
+                                                        .tradeLicense
+                                                    );
+                                                    e.target.style.display =
+                                                      "none";
+                                                  }}
+                                                />
+                                                <a
+                                                  href={
+                                                    u.sellerProfile.tradeLicense
+                                                  }
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="btn btn-sm btn-outline-primary"
+                                                >
+                                                  <i className="fas fa-external-link-alt me-1"></i>
+                                                  Open in New Tab
+                                                </a>
+                                              </div>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <span className="text-muted ms-2">
+                                            <i className="fas fa-exclamation-circle me-1"></i>
+                                            Not provided
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                     <div className="col-12 col-md-6">
